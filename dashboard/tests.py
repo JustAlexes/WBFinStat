@@ -53,6 +53,9 @@ class WildberriesReportTests(TestCase):
         self.assertContains(page, '160.00 RUB')
         self.assertContains(page, '514 684.50 RUB')
         self.assertContains(page, '19.10.2026 — 25.10.2026')
+        self.assertContains(page, 'class="deduction-trigger"')
+        self.assertContains(page, 'id="deduction-panel-835092276" hidden')
+        self.assertNotContains(page, '⌄')
         self.assertNotContains(page, 'Все поля')
 
     @patch('dashboard.views.start_detail_worker')

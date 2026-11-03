@@ -994,30 +994,28 @@ td {
     min-width: 0;
   }
 }
-.deduction-details summary {
+.deduction-trigger {
+  padding: 0;
+  border: 0;
+  background: none;
   color: var(--accent);
   cursor: pointer;
   font-weight: 700;
-  list-style: none;
-}
-.deduction-details summary::-webkit-details-marker {
-  display: none;
-}
-.deduction-details summary span {
-  margin-left: 5px;
-  display: inline-block;
-  transition: transform .15s;
-}
-.deduction-details[open] summary span {
-  transform: rotate(180deg);
+  text-align: left;
+  white-space: nowrap;
 }
 .deduction-panel {
+  position: fixed;
+  z-index: 1000;
   width: min(390px, 80vw);
   padding: 14px;
-  margin-top: 10px;
-  background: var(--surface-soft);
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  font-size: 12px;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 10px;
+  box-shadow: 0 16px 40px rgba(15, 22, 42, .22);
   white-space: normal;
   font-variant-numeric: tabular-nums;
 }

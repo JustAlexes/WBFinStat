@@ -57,9 +57,8 @@
             <td class="report-id">{{ row.id }}</td><td>{{ row.from }} — {{ row.to }}</td><td>{{ row.type }}</td>
             <td>{{ row.for_pay }} {{ row.currency }}</td><td>{{ row.sold }} {{ row.currency }}</td><td>{{ row.delivery }} {{ row.currency }}</td>
             <td>{{ row.storage }} {{ row.currency }}</td>
-            <td><details class="deduction-details">
-              <summary>{{ row.deduction }} {{ row.currency }} <span aria-hidden="true">⌄</span></summary>
-              <div class="deduction-panel">
+            <td><button class="deduction-trigger" type="button" aria-expanded="false" aria-controls="deduction-panel-{{ row.id }}" aria-label="Состав удержаний и выплат отчёта №{{ row.id }}: {{ row.deduction }} {{ row.currency }}">{{ row.deduction }} {{ row.currency }}</button>
+              <div class="deduction-panel" id="deduction-panel-{{ row.id }}" hidden>
                 <strong>Состав удержаний/выплат</strong>
                 {% if row.detail_rows %}
                   <ul>{% for entry in row.detail_rows %}<li><span>{{ entry.reason }}</span><b>{{ entry.formatted_amount }} {{ row.currency }}</b></li>{% endfor %}</ul>
@@ -71,7 +70,7 @@
                   <p>Детализация ещё загружается. Суммы появятся после завершения.</p>
                 {% endif %}
               </div>
-            </details></td>
+            </td>
             <td>{{ row.penalty }} {{ row.currency }}</td>
             <td>{{ row.loyalty_compensation }} {{ row.currency }}</td>
             <td>{{ row.reward_adjustment }} {{ row.currency }}</td>
