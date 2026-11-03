@@ -1,20 +1,32 @@
-<!doctype html>
-<html lang="ru">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FinStat</title>
-  <style>
-    body { font-family: system-ui, sans-serif; margin: 0; background: #f4f6fb; color: #18233b; }
-    main { max-width: 720px; margin: 12vh auto; padding: 2rem; }
-    h1 { font-size: 2.5rem; margin-bottom: .5rem; }
-    p { line-height: 1.6; }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>FinStat</h1>
-    <p>Приложение запущено. Здесь появятся финансовые отчёты Wildberries.</p>
-  </main>
-</body>
-</html>
+{% extends 'dashboard/base.html' %}
+{% block title %}Главная · FinStat{% endblock %}
+{% block content %}
+  <div class="page-heading">
+    <div class="eyebrow"><span class="eyebrow-dot"></span> ВАШЕ РАБОЧЕЕ ПРОСТРАНСТВО</div>
+    <h1>Главная</h1>
+    <p>Финансы маркетплейса — в одном понятном пространстве.</p>
+  </div>
+  <section class="welcome-card" aria-labelledby="welcome-title">
+    <div class="welcome-copy">
+      <span class="welcome-tag">FINSTAT / WILDBERRIES</span>
+      <h2 id="welcome-title">Всё начинается<br>с ясной картины.</h2>
+      <p>Здесь появится обзор продаж, расходов и прибыли. Пока мы настраиваем основу приложения и его интерфейс.</p>
+      <span class="welcome-status"><span></span> Пространство готово к работе</span>
+    </div>
+    <div class="preview-art" aria-hidden="true">
+      <div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div>
+      <div class="art-panel">
+        <span class="art-panel-title"></span>
+        <div class="art-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="art-panel-lines"><i></i><i></i></div>
+      </div>
+      <div class="art-floating"><span class="art-sparkle">✦</span><span></span><span></span></div>
+    </div>
+  </section>
+  <div class="section-heading"><h2>Скоро здесь</h2><span>Следующие шаги</span></div>
+  <div class="feature-grid">
+    <article class="feature-card"><span class="feature-number">01</span><h3>Продажи</h3><p>Динамика заказов и выкупов по выбранному периоду.</p></article>
+    <article class="feature-card"><span class="feature-number">02</span><h3>Расходы</h3><p>Комиссии, логистика и другие начисления в одном месте.</p></article>
+    <article class="feature-card"><span class="feature-number">03</span><h3>Прибыль</h3><p>Понятный результат с учётом себестоимости товаров.</p></article>
+  </div>
+{% endblock %}

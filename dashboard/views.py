@@ -4,4 +4,10 @@ from django.shortcuts import render
 def home(request):
     return render(request, 'dashboard/home.html')
 
-# Create your views here.
+
+def profile(request):
+    return render(request, 'dashboard/profile.html')
+
+
+def settings(request):
+    return render(request, 'dashboard/settings.html')

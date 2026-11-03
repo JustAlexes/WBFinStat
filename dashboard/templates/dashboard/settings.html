@@ -1,0 +1,13 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Настройки · FinStat{% endblock %}
+{% block breadcrumb %}Настройки{% endblock %}
+{% block content %}
+  <div class="page-heading"><div class="eyebrow"><span class="eyebrow-dot"></span> ПЕРСОНАЛИЗАЦИЯ</div><h1>Настройки</h1><p>Настройте внешний вид рабочего пространства.</p></div>
+  <section class="surface-card settings-card" aria-labelledby="theme-title">
+    <div class="setting-copy"><h2 id="theme-title">Тема оформления</h2><p>Выберите удобный для вас вид интерфейса. Настройка сохранится в этом браузере.</p></div>
+    <div class="theme-options" role="group" aria-label="Тема оформления">
+      <button type="button" class="theme-option" data-theme-choice="light" aria-pressed="true"><svg class="icon"><use href="#icon-sun"></use></svg><span>Светлая</span><span class="choice-indicator" aria-hidden="true"></span></button>
+      <button type="button" class="theme-option" data-theme-choice="dark" aria-pressed="false"><svg class="icon"><use href="#icon-moon"></use></svg><span>Тёмная</span><span class="choice-indicator" aria-hidden="true"></span></button>
+    </div>
+  </section>
+{% endblock %}

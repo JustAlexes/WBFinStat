@@ -17,9 +17,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from dashboard.views import home
+from dashboard.views import home, profile, settings
 
 urlpatterns = [
     path('', home, name='home'),
+    path('profile/', profile, name='profile'),
+    path('settings/', settings, name='settings'),
     path('admin/', admin.site.urls),
 ]
