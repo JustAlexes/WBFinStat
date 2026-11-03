@@ -994,3 +994,74 @@ td {
     min-width: 0;
   }
 }
+.deduction-details summary {
+  color: var(--accent);
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+.deduction-details summary::-webkit-details-marker {
+  display: none;
+}
+.deduction-details summary span {
+  margin-left: 5px;
+  display: inline-block;
+  transition: transform .15s;
+}
+.deduction-details[open] summary span {
+  transform: rotate(180deg);
+}
+.deduction-panel {
+  width: min(390px, 80vw);
+  padding: 14px;
+  margin-top: 10px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  white-space: normal;
+  font-variant-numeric: tabular-nums;
+}
+.deduction-panel strong {
+  font-size: 12px;
+}
+.deduction-panel p {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.deduction-panel ul {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+  max-height: 250px;
+  overflow: auto;
+}
+.deduction-panel li {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+}
+.deduction-panel li span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.deduction-panel li small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+}
+.deduction-panel li b {
+  white-space: nowrap;
+}
+.detail-button {
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}

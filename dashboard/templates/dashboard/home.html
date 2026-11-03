@@ -31,6 +31,7 @@
     {% if form.errors %}<div class="alert error" role="alert">Проверьте период: {{ form.non_field_errors }}{% for field in form %}{{ field.errors }}{% endfor %}</div>{% endif %}
     {% if error %}<div class="alert error" role="alert">{{ error }}</div>{% endif %}
     {% if success %}<div class="alert success" role="status">{{ success }}</div>{% endif %}
+    {% for message in messages %}<div class="alert {% if message.tags == 'error' %}error{% else %}success{% endif %}" role="status">{{ message }}</div>{% endfor %}
   </section>
 
   {% if snapshot %}
@@ -50,10 +51,27 @@
       <section class="surface-card table-card" aria-labelledby="reports-title">
         <div class="table-title"><h2 id="reports-title">Список отчётов</h2><p>Это суммы из списка отчётов WB, а не расчёт чистой прибыли.</p></div>
         <div class="table-scroll"><table>
-          <thead><tr><th>ID отчёта</th><th>Период</th><th>Тип WB</th><th>К перечислению за товар</th><th>Логистика</th><th>Все поля</th></tr></thead>
-          <tbody>{% for row in report_rows %}<tr>
+          <thead><tr><th>ID отчёта</th><th>Период</th><th>Тип WB</th><th>К перечислению за товар</th><th>Продано</th><th>Логистика</th><th>Хранение</th><th>Удержания/Выплаты</th><th>Штрафы</th><th>Все поля</th></tr></thead>
+          <tbody>{% for row in report_rows %}<tr id="report-{{ row.id }}">
             <td class="report-id">{{ row.id }}</td><td>{{ row.from }} — {{ row.to }}</td><td>{{ row.type }}</td>
-            <td>{{ row.for_pay }} {{ row.currency }}</td><td>{{ row.delivery }} {{ row.currency }}</td>
+            <td>{{ row.for_pay }} {{ row.currency }}</td><td>{{ row.sold }} {{ row.currency }}</td><td>{{ row.delivery }} {{ row.currency }}</td>
+            <td>{{ row.storage }} {{ row.currency }}</td>
+            <td><details class="deduction-details" {% if request.GET.detail == row.id %}open{% endif %}>
+              <summary>{{ row.deduction }} {{ row.currency }} <span aria-hidden="true">⌄</span></summary>
+              <div class="deduction-panel">
+                <strong>Состав удержаний/выплат</strong>
+                {% if row.detail_rows %}
+                  <ul>{% for entry in row.detail_rows %}<li><span>{{ entry.reason }} <small>{{ entry.date }}</small></span><b>{{ entry.formatted_amount }} {{ row.currency }}</b></li>{% endfor %}</ul>
+                {% endif %}
+                {% if row.detail.complete %}
+                  <p>Загрузка завершена. Сумма детализации: {{ row.detail_sum }} {{ row.currency }}.
+                  {% if row.detail_matches %}Совпадает с отчётом.{% else %}Есть расхождение с итогом отчёта — проверьте исходные поля.{% endif %}</p>
+                {% else %}
+                  <p>{% if row.detail %}Загрузка не завершена: показаны только полученные строки.{% else %}Для расшифровки нужно запросить строки отчёта WB.{% endif %} Каждый запрос ограничен одним разом в минуту. Продолжайте до ответа WB об окончании данных.</p>
+                  <form method="post" action="{% url 'load_deductions' row.id %}">{% csrf_token %}<button type="submit" class="detail-button">{% if row.detail %}Продолжить загрузку{% else %}Загрузить детализацию{% endif %}</button></form>
+                {% endif %}
+              </div>
+            </details></td>
             <td><details class="raw-details"><summary>Показать</summary><pre>{{ row.raw }}</pre></details></td>
           </tr>{% endfor %}</tbody>
         </table></div>

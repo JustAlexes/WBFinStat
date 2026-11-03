@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from dashboard.models import FetchThrottle
 
 REPORTS_URL = 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/list'
+DETAIL_URL = 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/detailed/{report_id}'
 COOLDOWN = timedelta(seconds=65)
 
 
@@ -28,17 +29,17 @@ def get_token():
     return os.environ.get('КОСТРИК', '').strip()
 
 
-def reserve_request():
+def reserve_request(key='sales-reports-list'):
     """Reserve an API call before sending it, including failed attempts."""
     now = timezone.now()
     next_allowed = now + COOLDOWN
     with transaction.atomic():
         FetchThrottle.objects.get_or_create(
-            key='sales-reports-list',
+            key=key,
             defaults={'next_allowed_at': now},
         )
         updated = FetchThrottle.objects.filter(
-            key='sales-reports-list', next_allowed_at__lte=now
+            key=key, next_allowed_at__lte=now
         ).update(next_allowed_at=next_allowed)
     if not updated:
         raise RateLimitError(
@@ -101,4 +102,44 @@ def fetch_report_list(date_from, date_to, period):
             'В ответе достигнут предел 1000 отчётов. Выберите более короткий период, '
             'чтобы не показать неполные данные.'
         )
+    return data
+
+
+def fetch_deduction_page(report_id, cursor):
+    """Return one detail page; None means WB confirmed the end (204)."""
+    token = get_token()
+    if not token:
+        raise WildberriesError('Добавьте токен в файл .env: КОСТРИК=ваш_токен')
+    reserve_request('sales-reports-detail')
+    try:
+        response = requests.post(
+            DETAIL_URL.format(report_id=report_id),
+            headers={'Authorization': token},
+            json={
+                'limit': 100000,
+                'rrdId': cursor,
+                'fields': ['rrdId', 'deduction', 'bonusTypeName', 'sellerOperName', 'rrDate'],
+            },
+            timeout=(5, 60),
+        )
+    except requests.RequestException as exc:
+        raise WildberriesError('Не удалось загрузить детализацию Wildberries.') from exc
+    if response.status_code == 204:
+        return None
+    if response.status_code in (401, 403):
+        raise WildberriesError('Доступ к детализации запрещён. Проверьте токен категории «Финансы».')
+    if response.status_code == 429:
+        raise RateLimitError('Лимит Wildberries: повторите загрузку детализации позже.')
+    if not response.ok:
+        raise WildberriesError(f'Wildberries вернул ошибку HTTP {response.status_code}.')
+    try:
+        data = response.json()
+    except ValueError as exc:
+        raise WildberriesError('Детализация пришла не в формате JSON.') from exc
+    if not isinstance(data, list) or not data or any(
+        not isinstance(row, dict) or 'rrdId' not in row for row in data
+    ):
+        raise WildberriesError('Формат детализации отличается от ожидаемого.')
+    if int(data[-1]['rrdId']) <= int(cursor):
+        raise WildberriesError('Wildberries не продвинул курсор детализации.')
     return data

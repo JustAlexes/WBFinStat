@@ -19,3 +19,11 @@ class FetchThrottle(models.Model):
 
     key = models.CharField(max_length=40, primary_key=True)
     next_allowed_at = models.DateTimeField()
+
+
+class ReportDetail(models.Model):
+    report_id = models.CharField(max_length=32, primary_key=True)
+    cursor = models.BigIntegerField(default=0)
+    entries = models.JSONField(default=list)
+    complete = models.BooleanField(default=False)
+    updated_at = models.DateTimeField(auto_now=True)

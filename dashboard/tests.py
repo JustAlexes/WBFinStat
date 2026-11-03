@@ -12,6 +12,51 @@ from dashboard.services.wildberries import (
 
 
 class WildberriesReportTests(TestCase):
+    def test_report_columns_use_summary_fields(self):
+        ReportSnapshot.objects.create(
+            date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),
+            period='weekly', reports=[{
+                'reportId': 835092276,
+                'currency': 'RUB',
+                'retailAmountSum': '1075580',
+                'paidStorageSum': '743.99',
+                'deductionSum': '154330',
+                'penaltySum': '160',
+            }],
+        )
+        page = self.client.get('/')
+        row = page.context['report_rows'][0]
+        self.assertEqual(row['sold'], '1 075 580.00')
+        self.assertEqual(row['storage'], '743.99')
+        self.assertEqual(row['deduction'], '154 330.00')
+        self.assertEqual(row['penalty'], '160.00')
+
+    @patch('dashboard.services.wildberries.get_token', return_value='test-token')
+    @patch('dashboard.services.wildberries.requests.post')
+    def test_deduction_detail_requires_terminal_204(self, post, _token):
+        ReportSnapshot.objects.create(
+            date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),
+            period='weekly', reports=[{'reportId': 835092276, 'deductionSum': '154330'}],
+        )
+        first = Mock(status_code=200, ok=True)
+        first.json.return_value = [{
+            'rrdId': 42, 'deduction': '154330',
+            'bonusTypeName': 'Услуги продвижения', 'rrDate': '2026-10-20',
+        }]
+        post.return_value = first
+        self.client.post('/reports/835092276/deductions/')
+        page = self.client.get('/')
+        self.assertFalse(page.context['report_rows'][0]['detail'].complete)
+        self.assertEqual(page.context['report_rows'][0]['detail_rows'][0]['reason'], 'Услуги продвижения')
+
+        from dashboard.models import FetchThrottle
+        FetchThrottle.objects.filter(key='sales-reports-detail').delete()
+        post.return_value = Mock(status_code=204)
+        self.client.post('/reports/835092276/deductions/')
+        row = self.client.get('/').context['report_rows'][0]
+        self.assertTrue(row['detail'].complete)
+        self.assertTrue(row['detail_matches'])
+
     @patch('dashboard.services.wildberries.get_token', return_value='test-token')
     @patch('dashboard.services.wildberries.requests.post')
     def test_complete_list_is_saved_and_shown(self, post, _token):
