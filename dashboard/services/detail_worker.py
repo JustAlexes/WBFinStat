@@ -1,8 +1,7 @@
-"""Fetch detail pages in the background after a report list is saved."""
+"""Load and cache the deduction rows of each report in the background."""
 
 import threading
 import time
-from collections import defaultdict
 from decimal import Decimal, InvalidOperation
 
 from django.db import close_old_connections, transaction
@@ -18,6 +17,48 @@ _active = set()
 _lock = threading.Lock()
 
 
+def _amount(value):
+    try:
+        return Decimal(str(value or '0'))
+    except (InvalidOperation, TypeError, ValueError):
+        return Decimal('0')
+
+
+def prepare_details(snapshot):
+    """Reuse valid caches and repair incomplete legacy period-based results."""
+    pending = False
+    for report in snapshot.reports:
+        report_id = str(report['reportId'])
+        expected = _amount(report.get('deductionSum'))
+        detail, _ = ReportDetail.objects.get_or_create(report_id=report_id)
+        if not expected:
+            # No detailed API call is needed for an explicitly zero total.
+            if report.get('deductionSum') is not None and (
+                not detail.complete or detail.entries
+            ):
+                detail.entries = []
+                detail.cursor = 0
+                detail.complete = True
+                detail.source = 'report'
+                detail.save(update_fields=['entries', 'cursor', 'complete', 'source', 'updated_at'])
+        elif detail.source != 'report':
+            cached_total = sum((_amount(entry.get('amount')) for entry in detail.entries), Decimal('0'))
+            if not detail.complete or cached_total != expected:
+                detail.entries = []
+                detail.cursor = 0
+                detail.complete = False
+            detail.source = 'report'
+            detail.save(update_fields=['entries', 'cursor', 'complete', 'source', 'updated_at'])
+        if not detail.complete:
+            pending = True
+
+    complete = not pending
+    if snapshot.detail_complete != complete:
+        snapshot.detail_complete = complete
+        snapshot.save(update_fields=['detail_complete'])
+    return complete
+
+
 def start_detail_worker(snapshot_id):
     with _lock:
         if snapshot_id in _active:
@@ -29,21 +70,22 @@ def start_detail_worker(snapshot_id):
 def _run(snapshot_id):
     close_old_connections()
     try:
-        initial = ReportSnapshot.objects.get(pk=snapshot_id)
-        if initial.detail_cursor == 0:
-            report_ids = [str(report['reportId']) for report in initial.reports]
-            ReportDetail.objects.filter(
-                report_id__in=report_ids, complete=False
-            ).update(entries=[])
+        snapshot = ReportSnapshot.objects.get(pk=snapshot_id)
+        prepare_details(snapshot)
+        report_ids = [str(report['reportId']) for report in snapshot.reports]
         while True:
-            snapshot = ReportSnapshot.objects.get(pk=snapshot_id)
+            snapshot.refresh_from_db()
             if snapshot.detail_complete or snapshot.detail_error:
                 return
+            detail = ReportDetail.objects.filter(
+                report_id__in=report_ids, complete=False
+            ).first()
+            if detail is None:
+                snapshot.detail_complete = True
+                snapshot.save(update_fields=['detail_complete'])
+                return
             try:
-                page = fetch_deduction_page(
-                    snapshot.date_from, snapshot.date_to,
-                    snapshot.period, snapshot.detail_cursor,
-                )
+                page = fetch_deduction_page(detail.report_id, detail.cursor)
             except RateLimitError:
                 time.sleep(65)
                 continue
@@ -52,41 +94,31 @@ def _run(snapshot_id):
                 snapshot.save(update_fields=['detail_error'])
                 return
 
-            report_ids = [str(report['reportId']) for report in snapshot.reports]
             if page is None:
-                with transaction.atomic():
-                    ReportDetail.objects.filter(report_id__in=report_ids).update(complete=True)
-                    snapshot.detail_complete = True
-                    snapshot.save(update_fields=['detail_complete'])
-                return
+                detail.complete = True
+                detail.save(update_fields=['complete', 'updated_at'])
+                if ReportDetail.objects.filter(report_id__in=report_ids, complete=False).exists():
+                    time.sleep(65)
+                continue
 
-            grouped = defaultdict(list)
+            entries = []
             for row in page:
-                report_id = str(row['reportId'])
-                if report_id not in report_ids:
-                    continue
-                try:
-                    amount = Decimal(str(row.get('deduction') or '0'))
-                except (InvalidOperation, TypeError, ValueError):
-                    continue
+                if str(row['reportId']) != detail.report_id:
+                    raise WildberriesError('Детализация содержит строку другого отчёта.')
+                amount = _amount(row.get('deduction'))
                 if amount:
-                    grouped[report_id].append({
+                    entries.append({
                         'amount': str(amount),
                         'reason': row.get('bonusTypeName') or row.get('sellerOperName')
                                   or 'Без указания причины',
                     })
 
             with transaction.atomic():
-                for report_id, entries in grouped.items():
-                    detail, _ = ReportDetail.objects.get_or_create(report_id=report_id)
-                    if not detail.complete:
-                        detail.entries = detail.entries + entries
-                        detail.save(update_fields=['entries', 'updated_at'])
-                snapshot.detail_cursor = page[-1]['rrdId']
-                snapshot.save(update_fields=['detail_cursor'])
+                detail.entries = detail.entries + entries
+                detail.cursor = int(page[-1]['rrdId'])
+                detail.save(update_fields=['entries', 'cursor', 'updated_at'])
             time.sleep(65)
     except Exception:
-        # Leave a readable status; a new list import can retry from the beginning.
         ReportSnapshot.objects.filter(pk=snapshot_id).update(
             detail_error='Не удалось завершить загрузку детализации. Загрузите отчёты повторно.'
         )

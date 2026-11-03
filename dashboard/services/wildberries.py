@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from dashboard.models import FetchThrottle
 
 REPORTS_URL = 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/list'
-DETAIL_URL = 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/detailed'
+DETAIL_URL = 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/detailed/{report_id}'
 COOLDOWN = timedelta(seconds=65)
 
 
@@ -105,7 +105,7 @@ def fetch_report_list(date_from, date_to, period):
     return data
 
 
-def fetch_deduction_page(date_from, date_to, period, cursor):
+def fetch_deduction_page(report_id, cursor):
     """Return one detail page; None means WB confirmed the end (204)."""
     token = get_token()
     if not token:
@@ -113,14 +113,11 @@ def fetch_deduction_page(date_from, date_to, period, cursor):
     reserve_request('sales-reports-detail')
     try:
         response = requests.post(
-            DETAIL_URL,
+            DETAIL_URL.format(report_id=report_id),
             headers={'Authorization': token},
             json={
                 'limit': 100000,
                 'rrdId': cursor,
-                'dateFrom': date_from.isoformat(),
-                'dateTo': date_to.isoformat(),
-                'period': period,
                 'fields': [
                     'reportId', 'rrdId', 'deduction', 'bonusTypeName',
                     'sellerOperName', 'rrDate',

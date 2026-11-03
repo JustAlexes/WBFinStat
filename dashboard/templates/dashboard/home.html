@@ -64,7 +64,7 @@
                 {% if row.detail_rows %}
                   <ul>{% for entry in row.detail_rows %}<li><span>{{ entry.reason }}</span><b>{{ entry.formatted_amount }} {{ row.currency }}</b></li>{% endfor %}</ul>
                 {% endif %}
-                {% if snapshot.detail_complete %}
+                {% if row.detail_complete %}
                   {% if not row.detail_rows %}<p>Удержаний и выплат в детализации не найдено.</p>{% endif %}
                   {% if row.detail_matches is False %}<p>Сумма строк отличается от итога отчёта. Требуется сверка.</p>{% endif %}
                 {% else %}

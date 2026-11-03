@@ -8,6 +8,7 @@ from dashboard.services.detail_worker import _run
 from dashboard.services.wildberries import (
     RateLimitError,
     WildberriesError,
+    fetch_deduction_page,
     fetch_report_list,
 )
 
@@ -77,6 +78,8 @@ class WildberriesReportTests(TestCase):
              'bonusTypeName': 'Продвижение'},
         ], None]
         _run(snapshot.pk)
+        self.assertEqual(fetch.call_args_list[0].args, ('835092276', 0))
+        self.assertEqual(fetch.call_args_list[1].args, ('835092276', 42))
         snapshot.refresh_from_db()
         self.assertTrue(snapshot.detail_complete)
         self.assertEqual(ReportDetail.objects.get(report_id='835092276').entries[0]['amount'], '100000')
@@ -88,6 +91,48 @@ class WildberriesReportTests(TestCase):
         self.assertTrue(row['detail_matches'])
         self.assertNotContains(page, 'Все поля')
         self.assertNotContains(page, 'Продолжить загрузку')
+
+    @patch('dashboard.views.start_detail_worker')
+    def test_old_empty_detail_is_repaired_without_reloading_list(self, worker):
+        snapshot = ReportSnapshot.objects.create(
+            date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),
+            period='weekly', reports=[{'reportId': 835092276, 'deductionSum': '154330'}],
+            detail_complete=True,
+        )
+        ReportDetail.objects.create(report_id='835092276', complete=True, entries=[])
+        page = self.client.get('/')
+        snapshot.refresh_from_db()
+        detail = ReportDetail.objects.get(report_id='835092276')
+        self.assertFalse(snapshot.detail_complete)
+        self.assertFalse(detail.complete)
+        self.assertEqual(detail.source, 'report')
+        self.assertContains(page, 'Детализация ещё загружается')
+        worker.assert_called_with(snapshot.pk)
+
+    @patch('dashboard.views.start_detail_worker')
+    def test_completed_report_detail_remains_cached(self, worker):
+        ReportSnapshot.objects.create(
+            date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),
+            period='weekly', reports=[{'reportId': 835092276, 'deductionSum': '154330'}],
+            detail_complete=True,
+        )
+        ReportDetail.objects.create(
+            report_id='835092276', complete=True, source='report',
+            entries=[{'amount': '154330', 'reason': 'Продвижение'}],
+        )
+        self.client.get('/')
+        self.client.get('/')
+        worker.assert_not_called()
+
+    @patch('dashboard.services.wildberries.get_token', return_value='test-token')
+    @patch('dashboard.services.wildberries.requests.post')
+    def test_detail_request_uses_report_id_and_pagination_cursor(self, post, _token):
+        response = Mock(status_code=200, ok=True)
+        response.json.return_value = [{'reportId': 835092276, 'rrdId': 42}]
+        post.return_value = response
+        self.assertEqual(fetch_deduction_page('835092276', 41), response.json.return_value)
+        self.assertTrue(post.call_args.args[0].endswith('/detailed/835092276'))
+        self.assertEqual(post.call_args.kwargs['json']['rrdId'], 41)
 
     @patch('dashboard.views.start_detail_worker')
     @patch('dashboard.services.wildberries.get_token', return_value='test-token')

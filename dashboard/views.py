@@ -9,7 +9,7 @@ from django.views.decorators.http import require_GET, require_http_methods
 
 from dashboard.forms import ReportPeriodForm
 from dashboard.models import ReportDetail, ReportSnapshot
-from dashboard.services.detail_worker import start_detail_worker
+from dashboard.services.detail_worker import prepare_details, start_detail_worker
 from dashboard.services.wildberries import WildberriesError, fetch_report_list, get_token
 
 MONEY_FIELDS = (
@@ -103,10 +103,11 @@ def report_context(snapshot):
             'loyalty_points': money(report.get('cashbackAmountSum')),
             'payment_schedule': money(report.get('paymentSchedule')),
             'total_to_pay': money(report.get('bankPaymentSum')),
-            'detail_rows': detail_rows if snapshot.detail_complete else [],
+            'detail_rows': detail_rows if detail and detail.complete else [],
+            'detail_complete': bool(detail and detail.complete),
             'detail_matches': (
                 detail_sum == Decimal(str(expected))
-            ) if snapshot.detail_complete and expected is not None else None,
+            ) if detail and detail.complete and expected is not None else None,
         })
 
     summaries = [
@@ -145,31 +146,23 @@ def home(request):
             reports = fetch_report_list(
                 data['date_from'], data['date_to'], data['period']
             )
-            ids = [str(report['reportId']) for report in reports]
-            for report_id in ids:
-                detail, _ = ReportDetail.objects.get_or_create(report_id=report_id)
-                if not detail.complete:
-                    detail.entries = []
-                    detail.save(update_fields=['entries'])
-            complete = all(
-                ReportDetail.objects.get(report_id=report_id).complete
-                for report_id in ids
-            )
             snapshot = ReportSnapshot.objects.create(
                 date_from=data['date_from'],
                 date_to=data['date_to'],
                 period=data['period'],
                 reports=reports,
-                detail_complete=complete,
             )
+            complete = prepare_details(snapshot)
             if not complete:
                 start_detail_worker(snapshot.pk)
             success = f'Загружено отчётов: {len(reports)}. Детализация подгружается автоматически.'
         except WildberriesError as exc:
             error = str(exc)
 
-    if snapshot and not snapshot.detail_complete and not snapshot.detail_error:
-        start_detail_worker(snapshot.pk)
+    if snapshot:
+        prepare_details(snapshot)
+        if not snapshot.detail_complete and not snapshot.detail_error:
+            start_detail_worker(snapshot.pk)
 
     context = {
         'form': form,
