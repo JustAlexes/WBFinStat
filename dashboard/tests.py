@@ -19,11 +19,20 @@ class WildberriesReportTests(TestCase):
             date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),
             period='weekly', reports=[{
                 'reportId': 835092276,
+                'dateFrom': '2026-10-19',
+                'dateTo': '2026-10-25',
+                'reportType': 1,
                 'currency': 'RUB',
                 'retailAmountSum': '1075580',
                 'paidStorageSum': '743.99',
                 'deductionSum': '154330',
                 'penaltySum': '160',
+                'cashbackDiscountSum': '2571.93',
+                'additionalPaymentSum': '0',
+                'cashbackCommissionChangeSum': '47.71',
+                'cashbackAmountSum': '350',
+                'paymentSchedule': '0',
+                'bankPaymentSum': '514684.5',
             }],
         )
         page = self.client.get('/')
@@ -32,8 +41,26 @@ class WildberriesReportTests(TestCase):
         self.assertEqual(row['storage'], '743.99')
         self.assertEqual(row['deduction'], '154 330.00')
         self.assertEqual(row['penalty'], '160.00')
+        self.assertEqual((row['from'], row['to']), ('19.10.2026', '25.10.2026'))
+        self.assertEqual(row['type'], 'Основной')
+        self.assertEqual(row['loyalty_compensation'], '2 571.93')
+        self.assertEqual(row['reward_adjustment'], '0.00')
+        self.assertEqual(row['loyalty_fee'], '47.71')
+        self.assertEqual(row['loyalty_points'], '350.00')
+        self.assertEqual(row['payment_schedule'], '0.00')
+        self.assertEqual(row['total_to_pay'], '514 684.50')
         self.assertContains(page, '160.00 RUB')
+        self.assertContains(page, '514 684.50 RUB')
+        self.assertContains(page, '19.10.2026 — 25.10.2026')
         self.assertNotContains(page, 'Все поля')
+
+    @patch('dashboard.views.start_detail_worker')
+    def test_buyout_report_type_is_named(self, _worker):
+        ReportSnapshot.objects.create(
+            date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),
+            period='weekly', reports=[{'reportId': 2, 'reportType': 2}],
+        )
+        self.assertEqual(self.client.get('/').context['report_rows'][0]['type'], 'По выкупам')
 
     @patch('dashboard.services.detail_worker.close_old_connections')
     @patch('dashboard.services.detail_worker.time.sleep')

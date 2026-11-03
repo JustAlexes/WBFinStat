@@ -52,7 +52,7 @@
       <section class="surface-card table-card" aria-labelledby="reports-title">
         <div class="table-title"><h2 id="reports-title">Список отчётов</h2><p>Это суммы из списка отчётов WB, а не расчёт чистой прибыли.</p></div>
         <div class="table-scroll"><table>
-          <thead><tr><th>ID отчёта</th><th>Период</th><th>Тип WB</th><th>К перечислению за товар</th><th>Продано</th><th>Логистика</th><th>Хранение</th><th>Удержания/Выплаты</th><th>Штрафы</th></tr></thead>
+          <thead><tr><th>ID отчёта</th><th>Период</th><th>Тип отчёта</th><th>К перечислению за товар</th><th>Продано</th><th>Логистика</th><th>Хранение</th><th>Удержания/Выплаты</th><th>Штрафы</th><th>Компенсация скидки по программе лояльности</th><th>Корректировка Вознаграждения Вайлдберриз</th><th>Стоимость участия в программе лояльности</th><th>Сумма баллов, удержанных по программе лояльности</th><th>Изменение срока перечисления денежных средств</th><th>Итого к оплате</th></tr></thead>
           <tbody>{% for row in report_rows %}<tr id="report-{{ row.id }}">
             <td class="report-id">{{ row.id }}</td><td>{{ row.from }} — {{ row.to }}</td><td>{{ row.type }}</td>
             <td>{{ row.for_pay }} {{ row.currency }}</td><td>{{ row.sold }} {{ row.currency }}</td><td>{{ row.delivery }} {{ row.currency }}</td>
@@ -73,6 +73,12 @@
               </div>
             </details></td>
             <td>{{ row.penalty }} {{ row.currency }}</td>
+            <td>{{ row.loyalty_compensation }} {{ row.currency }}</td>
+            <td>{{ row.reward_adjustment }} {{ row.currency }}</td>
+            <td>{{ row.loyalty_fee }} {{ row.currency }}</td>
+            <td>{{ row.loyalty_points }} {{ row.currency }}</td>
+            <td>{{ row.payment_schedule }} {{ row.currency }}</td>
+            <td class="total-payment">{{ row.total_to_pay }} {{ row.currency }}</td>
           </tr>{% endfor %}</tbody>
         </table></div>
       </section>

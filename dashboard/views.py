@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.http import JsonResponse
@@ -20,8 +20,12 @@ MONEY_FIELDS = (
     ('paidAcceptanceSum', 'Платная приёмка'),
     ('deductionSum', 'Удержания'),
     ('penaltySum', 'Штрафы'),
-    ('additionalPaymentSum', 'Доплаты'),
-    ('bankPaymentSum', 'Банковский платёж'),
+    ('additionalPaymentSum', 'Корректировка Вознаграждения Вайлдберриз'),
+    ('cashbackDiscountSum', 'Компенсация скидки по программе лояльности'),
+    ('cashbackCommissionChangeSum', 'Стоимость участия в программе лояльности'),
+    ('cashbackAmountSum', 'Сумма баллов, удержанных по программе лояльности'),
+    ('paymentSchedule', 'Изменение срока перечисления денежных средств'),
+    ('bankPaymentSum', 'Итого к оплате'),
 )
 
 
@@ -30,6 +34,21 @@ def money(value):
         return f'{Decimal(str(value)):,.2f}'.replace(',', ' ')
     except (InvalidOperation, TypeError, ValueError):
         return '—'
+
+
+def display_date(value):
+    if not value:
+        return '—'
+    try:
+        return date.fromisoformat(str(value)[:10]).strftime('%d.%m.%Y')
+    except ValueError:
+        return str(value)
+
+
+def report_type_label(value):
+    if value is None:
+        return '—'
+    return {'1': 'Основной', '2': 'По выкупам'}.get(str(value), f'Тип {value}')
 
 
 def report_context(snapshot):
@@ -68,9 +87,9 @@ def report_context(snapshot):
         expected = report.get('deductionSum')
         rows.append({
             'id': report_id,
-            'from': report.get('dateFrom', '—'),
-            'to': report.get('dateTo', '—'),
-            'type': report.get('reportType', '—'),
+            'from': display_date(report.get('dateFrom')),
+            'to': display_date(report.get('dateTo')),
+            'type': report_type_label(report.get('reportType')),
             'currency': currency,
             'for_pay': money(report.get('forPaySum')),
             'delivery': money(report.get('deliveryServiceSum')),
@@ -78,6 +97,12 @@ def report_context(snapshot):
             'storage': money(report.get('paidStorageSum')),
             'deduction': money(expected),
             'penalty': money(report.get('penaltySum')),
+            'loyalty_compensation': money(report.get('cashbackDiscountSum')),
+            'reward_adjustment': money(report.get('additionalPaymentSum')),
+            'loyalty_fee': money(report.get('cashbackCommissionChangeSum')),
+            'loyalty_points': money(report.get('cashbackAmountSum')),
+            'payment_schedule': money(report.get('paymentSchedule')),
+            'total_to_pay': money(report.get('bankPaymentSum')),
             'detail_rows': detail_rows if snapshot.detail_complete else [],
             'detail_matches': (
                 detail_sum == Decimal(str(expected))
