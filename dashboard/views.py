@@ -1,20 +1,16 @@
-import json
 from collections import defaultdict
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
+from django.http import JsonResponse
 from django.shortcuts import render
-from django.contrib import messages
-from django.http import Http404
-from django.shortcuts import redirect
 from django.utils import timezone
-from django.views.decorators.http import require_http_methods, require_POST
+from django.views.decorators.http import require_GET, require_http_methods
 
 from dashboard.forms import ReportPeriodForm
 from dashboard.models import ReportDetail, ReportSnapshot
-from dashboard.services.wildberries import (
-    WildberriesError, fetch_deduction_page, fetch_report_list, get_token,
-)
+from dashboard.services.detail_worker import start_detail_worker
+from dashboard.services.wildberries import WildberriesError, fetch_report_list, get_token
 
 MONEY_FIELDS = (
     ('retailAmountSum', 'Сумма продаж по отчёту'),
@@ -59,6 +55,17 @@ def report_context(snapshot):
                     totals[currency][key] += Decimal(str(value))
                 except (InvalidOperation, TypeError, ValueError):
                     pass
+
+        grouped = defaultdict(Decimal)
+        if detail:
+            for entry in detail.entries:
+                grouped[entry['reason']] += Decimal(str(entry['amount']))
+        detail_rows = [
+            {'reason': reason, 'formatted_amount': money(amount)}
+            for reason, amount in sorted(grouped.items())
+        ]
+        detail_sum = sum(grouped.values(), Decimal('0'))
+        expected = report.get('deductionSum')
         rows.append({
             'id': report_id,
             'from': report.get('dateFrom', '—'),
@@ -69,22 +76,12 @@ def report_context(snapshot):
             'delivery': money(report.get('deliveryServiceSum')),
             'sold': money(report.get('retailAmountSum')),
             'storage': money(report.get('paidStorageSum')),
-            'deduction': money(report.get('deductionSum')),
+            'deduction': money(expected),
             'penalty': money(report.get('penaltySum')),
-            'detail': detail,
-            'detail_rows': [
-                {**entry, 'formatted_amount': money(entry['amount'])}
-                for entry in detail.entries
-            ] if detail else [],
-            'detail_sum': money(sum(
-                (Decimal(str(entry['amount'])) for entry in detail.entries),
-                Decimal('0'),
-            )) if detail and detail.complete else None,
+            'detail_rows': detail_rows if snapshot.detail_complete else [],
             'detail_matches': (
-                sum((Decimal(str(entry['amount'])) for entry in detail.entries), Decimal('0'))
-                == Decimal(str(report.get('deductionSum')))
-            ) if detail and detail.complete and report.get('deductionSum') is not None else None,
-            'raw': json.dumps(report, ensure_ascii=False, indent=2),
+                detail_sum == Decimal(str(expected))
+            ) if snapshot.detail_complete and expected is not None else None,
         })
 
     summaries = [
@@ -123,15 +120,31 @@ def home(request):
             reports = fetch_report_list(
                 data['date_from'], data['date_to'], data['period']
             )
+            ids = [str(report['reportId']) for report in reports]
+            for report_id in ids:
+                detail, _ = ReportDetail.objects.get_or_create(report_id=report_id)
+                if not detail.complete:
+                    detail.entries = []
+                    detail.save(update_fields=['entries'])
+            complete = all(
+                ReportDetail.objects.get(report_id=report_id).complete
+                for report_id in ids
+            )
             snapshot = ReportSnapshot.objects.create(
                 date_from=data['date_from'],
                 date_to=data['date_to'],
                 period=data['period'],
                 reports=reports,
+                detail_complete=complete,
             )
-            success = f'Загружено отчётов: {len(reports)}.'
+            if not complete:
+                start_detail_worker(snapshot.pk)
+            success = f'Загружено отчётов: {len(reports)}. Детализация подгружается автоматически.'
         except WildberriesError as exc:
             error = str(exc)
+
+    if snapshot and not snapshot.detail_complete and not snapshot.detail_error:
+        start_detail_worker(snapshot.pk)
 
     context = {
         'form': form,
@@ -144,37 +157,17 @@ def home(request):
     return render(request, 'dashboard/home.html', context)
 
 
-@require_POST
-def load_deductions(request, report_id):
-    snapshot = ReportSnapshot.objects.first()
-    if snapshot is None or not any(
-        str(item.get('reportId')) == str(report_id) for item in snapshot.reports
-    ):
-        raise Http404('Отчёт не найден в последней загрузке.')
-    detail, _ = ReportDetail.objects.get_or_create(report_id=str(report_id))
-    if not detail.complete:
-        try:
-            page = fetch_deduction_page(report_id, detail.cursor)
-            if page is None:
-                detail.complete = True
-            else:
-                detail.cursor = page[-1]['rrdId']
-                for row in page:
-                    try:
-                        amount = Decimal(str(row.get('deduction') or '0'))
-                    except (InvalidOperation, ValueError):
-                        continue
-                    if amount:
-                        detail.entries.append({
-                            'amount': str(amount),
-                            'reason': row.get('bonusTypeName') or row.get('sellerOperName') or 'Без указания причины',
-                            'date': row.get('rrDate') or '—',
-                        })
-            detail.save()
-            messages.success(request, 'Детализация обновлена. Для подтверждения полноты данных продолжайте до ответа «Загрузка завершена».')
-        except WildberriesError as exc:
-            messages.error(request, str(exc))
-    return redirect(f'/?detail={report_id}#report-{report_id}')
+@require_GET
+def report_status(request, snapshot_id):
+    snapshot = ReportSnapshot.objects.filter(pk=snapshot_id).first()
+    if snapshot is None:
+        return JsonResponse({'error': 'Отчёт не найден'}, status=404)
+    if not snapshot.detail_complete and not snapshot.detail_error:
+        start_detail_worker(snapshot.pk)
+    return JsonResponse({
+        'complete': snapshot.detail_complete,
+        'error': snapshot.detail_error,
+    })
 
 
 def profile(request):

@@ -17,12 +17,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from dashboard.views import home, load_deductions, profile, settings
+from dashboard.views import home, profile, report_status, settings
 
 urlpatterns = [
     path('', home, name='home'),
     path('profile/', profile, name='profile'),
     path('settings/', settings, name='settings'),
-    path('reports/<int:report_id>/deductions/', load_deductions, name='load_deductions'),
+    path('reports/status/<int:snapshot_id>/', report_status, name='report_status'),
     path('admin/', admin.site.urls),
 ]

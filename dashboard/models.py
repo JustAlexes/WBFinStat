@@ -8,6 +8,9 @@ class ReportSnapshot(models.Model):
     date_to = models.DateField()
     period = models.CharField(max_length=6)
     reports = models.JSONField(default=list)
+    detail_cursor = models.BigIntegerField(default=0)
+    detail_complete = models.BooleanField(default=False)
+    detail_error = models.TextField(blank=True)
     fetched_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -23,7 +26,6 @@ class FetchThrottle(models.Model):
 
 class ReportDetail(models.Model):
     report_id = models.CharField(max_length=32, primary_key=True)
-    cursor = models.BigIntegerField(default=0)
     entries = models.JSONField(default=list)
     complete = models.BooleanField(default=False)
     updated_at = models.DateTimeField(auto_now=True)

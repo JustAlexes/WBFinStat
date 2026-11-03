@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from dashboard.models import FetchThrottle
 
 REPORTS_URL = 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/list'
-DETAIL_URL = 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/detailed/{report_id}'
+DETAIL_URL = 'https://finance-api.wildberries.ru/api/finance/v1/sales-reports/detailed'
 COOLDOWN = timedelta(seconds=65)
 
 
@@ -105,7 +105,7 @@ def fetch_report_list(date_from, date_to, period):
     return data
 
 
-def fetch_deduction_page(report_id, cursor):
+def fetch_deduction_page(date_from, date_to, period, cursor):
     """Return one detail page; None means WB confirmed the end (204)."""
     token = get_token()
     if not token:
@@ -113,12 +113,18 @@ def fetch_deduction_page(report_id, cursor):
     reserve_request('sales-reports-detail')
     try:
         response = requests.post(
-            DETAIL_URL.format(report_id=report_id),
+            DETAIL_URL,
             headers={'Authorization': token},
             json={
                 'limit': 100000,
                 'rrdId': cursor,
-                'fields': ['rrdId', 'deduction', 'bonusTypeName', 'sellerOperName', 'rrDate'],
+                'dateFrom': date_from.isoformat(),
+                'dateTo': date_to.isoformat(),
+                'period': period,
+                'fields': [
+                    'reportId', 'rrdId', 'deduction', 'bonusTypeName',
+                    'sellerOperName', 'rrDate',
+                ],
             },
             timeout=(5, 60),
         )
@@ -137,7 +143,8 @@ def fetch_deduction_page(report_id, cursor):
     except ValueError as exc:
         raise WildberriesError('Детализация пришла не в формате JSON.') from exc
     if not isinstance(data, list) or not data or any(
-        not isinstance(row, dict) or 'rrdId' not in row for row in data
+        not isinstance(row, dict) or 'rrdId' not in row or 'reportId' not in row
+        for row in data
     ):
         raise WildberriesError('Формат детализации отличается от ожидаемого.')
     if int(data[-1]['rrdId']) <= int(cursor):

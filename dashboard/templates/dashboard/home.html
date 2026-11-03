@@ -39,6 +39,7 @@
       <div><h2>Последняя загрузка</h2><p>{{ snapshot.date_from|date:'d.m.Y' }} — {{ snapshot.date_to|date:'d.m.Y' }} · {% if snapshot.period == 'weekly' %}еженедельные{% else %}ежедневные{% endif %} отчёты · загружено {{ snapshot.fetched_at|date:'d.m.Y H:i' }} (МСК)</p></div>
       <span class="count-pill">{{ report_count }} отчётов</span>
     </div>
+    {% if snapshot.detail_error %}<div class="alert error" role="alert">Детализация: {{ snapshot.detail_error }}</div>{% elif not snapshot.detail_complete %}<div class="notice detail-status" role="status" data-status-url="{% url 'report_status' snapshot.pk %}">Расшифровка удержаний загружается автоматически. Это может занять несколько минут из-за лимита Wildberries.</div>{% endif %}
     {% for summary in summaries %}
       <section class="summary-section" aria-label="Суммы по валюте {{ summary.currency }}">
         <div class="section-heading"><h2>Суммы по отчётам · {{ summary.currency }}</h2></div>
@@ -51,28 +52,27 @@
       <section class="surface-card table-card" aria-labelledby="reports-title">
         <div class="table-title"><h2 id="reports-title">Список отчётов</h2><p>Это суммы из списка отчётов WB, а не расчёт чистой прибыли.</p></div>
         <div class="table-scroll"><table>
-          <thead><tr><th>ID отчёта</th><th>Период</th><th>Тип WB</th><th>К перечислению за товар</th><th>Продано</th><th>Логистика</th><th>Хранение</th><th>Удержания/Выплаты</th><th>Штрафы</th><th>Все поля</th></tr></thead>
+          <thead><tr><th>ID отчёта</th><th>Период</th><th>Тип WB</th><th>К перечислению за товар</th><th>Продано</th><th>Логистика</th><th>Хранение</th><th>Удержания/Выплаты</th><th>Штрафы</th></tr></thead>
           <tbody>{% for row in report_rows %}<tr id="report-{{ row.id }}">
             <td class="report-id">{{ row.id }}</td><td>{{ row.from }} — {{ row.to }}</td><td>{{ row.type }}</td>
             <td>{{ row.for_pay }} {{ row.currency }}</td><td>{{ row.sold }} {{ row.currency }}</td><td>{{ row.delivery }} {{ row.currency }}</td>
             <td>{{ row.storage }} {{ row.currency }}</td>
-            <td><details class="deduction-details" {% if request.GET.detail == row.id %}open{% endif %}>
+            <td><details class="deduction-details">
               <summary>{{ row.deduction }} {{ row.currency }} <span aria-hidden="true">⌄</span></summary>
               <div class="deduction-panel">
                 <strong>Состав удержаний/выплат</strong>
                 {% if row.detail_rows %}
-                  <ul>{% for entry in row.detail_rows %}<li><span>{{ entry.reason }} <small>{{ entry.date }}</small></span><b>{{ entry.formatted_amount }} {{ row.currency }}</b></li>{% endfor %}</ul>
+                  <ul>{% for entry in row.detail_rows %}<li><span>{{ entry.reason }}</span><b>{{ entry.formatted_amount }} {{ row.currency }}</b></li>{% endfor %}</ul>
                 {% endif %}
-                {% if row.detail.complete %}
-                  <p>Загрузка завершена. Сумма детализации: {{ row.detail_sum }} {{ row.currency }}.
-                  {% if row.detail_matches %}Совпадает с отчётом.{% else %}Есть расхождение с итогом отчёта — проверьте исходные поля.{% endif %}</p>
+                {% if snapshot.detail_complete %}
+                  {% if not row.detail_rows %}<p>Удержаний и выплат в детализации не найдено.</p>{% endif %}
+                  {% if row.detail_matches is False %}<p>Сумма строк отличается от итога отчёта. Требуется сверка.</p>{% endif %}
                 {% else %}
-                  <p>{% if row.detail %}Загрузка не завершена: показаны только полученные строки.{% else %}Для расшифровки нужно запросить строки отчёта WB.{% endif %} Каждый запрос ограничен одним разом в минуту. Продолжайте до ответа WB об окончании данных.</p>
-                  <form method="post" action="{% url 'load_deductions' row.id %}">{% csrf_token %}<button type="submit" class="detail-button">{% if row.detail %}Продолжить загрузку{% else %}Загрузить детализацию{% endif %}</button></form>
+                  <p>Детализация ещё загружается. Суммы появятся после завершения.</p>
                 {% endif %}
               </div>
             </details></td>
-            <td><details class="raw-details"><summary>Показать</summary><pre>{{ row.raw }}</pre></details></td>
+            <td>{{ row.penalty }} {{ row.currency }}</td>
           </tr>{% endfor %}</tbody>
         </table></div>
       </section>

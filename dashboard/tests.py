@@ -3,7 +3,8 @@ from unittest.mock import Mock, patch
 
 from django.test import TestCase
 
-from dashboard.models import ReportSnapshot
+from dashboard.models import ReportDetail, ReportSnapshot
+from dashboard.services.detail_worker import _run
 from dashboard.services.wildberries import (
     RateLimitError,
     WildberriesError,
@@ -12,7 +13,8 @@ from dashboard.services.wildberries import (
 
 
 class WildberriesReportTests(TestCase):
-    def test_report_columns_use_summary_fields(self):
+    @patch('dashboard.views.start_detail_worker')
+    def test_report_columns_use_summary_fields(self, _worker):
         ReportSnapshot.objects.create(
             date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),
             period='weekly', reports=[{
@@ -30,36 +32,40 @@ class WildberriesReportTests(TestCase):
         self.assertEqual(row['storage'], '743.99')
         self.assertEqual(row['deduction'], '154 330.00')
         self.assertEqual(row['penalty'], '160.00')
+        self.assertContains(page, '160.00 RUB')
+        self.assertNotContains(page, 'Все поля')
 
-    @patch('dashboard.services.wildberries.get_token', return_value='test-token')
-    @patch('dashboard.services.wildberries.requests.post')
-    def test_deduction_detail_requires_terminal_204(self, post, _token):
-        ReportSnapshot.objects.create(
+    @patch('dashboard.services.detail_worker.close_old_connections')
+    @patch('dashboard.services.detail_worker.time.sleep')
+    @patch('dashboard.services.detail_worker.fetch_deduction_page')
+    def test_automatic_detail_groups_by_reason(self, fetch, _sleep, _close):
+        snapshot = ReportSnapshot.objects.create(
             date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),
             period='weekly', reports=[{'reportId': 835092276, 'deductionSum': '154330'}],
         )
-        first = Mock(status_code=200, ok=True)
-        first.json.return_value = [{
-            'rrdId': 42, 'deduction': '154330',
-            'bonusTypeName': 'Услуги продвижения', 'rrDate': '2026-10-20',
-        }]
-        post.return_value = first
-        self.client.post('/reports/835092276/deductions/')
-        page = self.client.get('/')
-        self.assertFalse(page.context['report_rows'][0]['detail'].complete)
-        self.assertEqual(page.context['report_rows'][0]['detail_rows'][0]['reason'], 'Услуги продвижения')
-
-        from dashboard.models import FetchThrottle
-        FetchThrottle.objects.filter(key='sales-reports-detail').delete()
-        post.return_value = Mock(status_code=204)
-        self.client.post('/reports/835092276/deductions/')
-        row = self.client.get('/').context['report_rows'][0]
-        self.assertTrue(row['detail'].complete)
+        fetch.side_effect = [[
+            {'reportId': 835092276, 'rrdId': 41, 'deduction': '100000',
+             'bonusTypeName': 'Продвижение'},
+            {'reportId': 835092276, 'rrdId': 42, 'deduction': '54330',
+             'bonusTypeName': 'Продвижение'},
+        ], None]
+        _run(snapshot.pk)
+        snapshot.refresh_from_db()
+        self.assertTrue(snapshot.detail_complete)
+        self.assertEqual(ReportDetail.objects.get(report_id='835092276').entries[0]['amount'], '100000')
+        with patch('dashboard.views.start_detail_worker'):
+            page = self.client.get('/')
+        row = page.context['report_rows'][0]
+        self.assertEqual(len(row['detail_rows']), 1)
+        self.assertEqual(row['detail_rows'][0]['formatted_amount'], '154 330.00')
         self.assertTrue(row['detail_matches'])
+        self.assertNotContains(page, 'Все поля')
+        self.assertNotContains(page, 'Продолжить загрузку')
 
+    @patch('dashboard.views.start_detail_worker')
     @patch('dashboard.services.wildberries.get_token', return_value='test-token')
     @patch('dashboard.services.wildberries.requests.post')
-    def test_complete_list_is_saved_and_shown(self, post, _token):
+    def test_complete_list_is_saved_and_shown(self, post, _token, worker):
         response = Mock(status_code=200, ok=True)
         response.json.return_value = [{
             'reportId': 123,
@@ -81,6 +87,7 @@ class WildberriesReportTests(TestCase):
         self.assertEqual(ReportSnapshot.objects.first().reports[0]['reportId'], 123)
         self.assertEqual(post.call_args.kwargs['json']['period'], 'weekly')
         self.assertEqual(post.call_args.kwargs['headers']['Authorization'], 'test-token')
+        worker.assert_called()
 
     @patch('dashboard.services.wildberries.get_token', return_value='test-token')
     @patch('dashboard.services.wildberries.requests.post')
@@ -91,9 +98,10 @@ class WildberriesReportTests(TestCase):
             fetch_report_list(date(2026, 10, 1), date(2026, 10, 2), 'daily')
         self.assertEqual(post.call_count, 1)
 
+    @patch('dashboard.views.start_detail_worker')
     @patch('dashboard.services.wildberries.get_token', return_value='test-token')
     @patch('dashboard.services.wildberries.requests.post')
-    def test_api_error_does_not_replace_saved_data(self, post, _token):
+    def test_api_error_does_not_replace_saved_data(self, post, _token, _worker):
         ReportSnapshot.objects.create(
             date_from=date(2026, 9, 1), date_to=date(2026, 9, 30),
             period='weekly', reports=[{'reportId': 100}],

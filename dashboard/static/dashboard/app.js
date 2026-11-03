@@ -54,4 +54,17 @@
     save('finstat-theme', root.dataset.theme);
     syncThemeButtons();
   }));
+
+  const detailStatus = document.querySelector('[data-status-url]');
+  if (detailStatus) {
+    const checkStatus = async () => {
+      try {
+        const response = await fetch(detailStatus.dataset.statusUrl);
+        if (!response.ok) return;
+        const status = await response.json();
+        if (status.complete || status.error) window.location.reload();
+      } catch (error) { /* Try again on the next poll. */ }
+    };
+    window.setInterval(checkStatus, 10000);
+  }
 })();
