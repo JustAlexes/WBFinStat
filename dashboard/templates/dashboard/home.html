@@ -2,31 +2,66 @@
 {% block title %}Главная · FinStat{% endblock %}
 {% block content %}
   <div class="page-heading">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> ВАШЕ РАБОЧЕЕ ПРОСТРАНСТВО</div>
+    <div class="eyebrow"><span class="eyebrow-dot"></span> FINSTAT / WILDBERRIES</div>
     <h1>Главная</h1>
-    <p>Финансы маркетплейса — в одном понятном пространстве.</p>
+    <p>Финансовые отчёты реализации Wildberries в одном месте.</p>
   </div>
-  <section class="welcome-card" aria-labelledby="welcome-title">
-    <div class="welcome-copy">
-      <span class="welcome-tag">FINSTAT / WILDBERRIES</span>
-      <h2 id="welcome-title">Всё начинается<br>с ясной картины.</h2>
-      <p>Здесь появится обзор продаж, расходов и прибыли. Пока мы настраиваем основу приложения и его интерфейс.</p>
-      <span class="welcome-status"><span></span> Пространство готово к работе</span>
-    </div>
-    <div class="preview-art" aria-hidden="true">
-      <div class="art-orbit orbit-one"></div><div class="art-orbit orbit-two"></div>
-      <div class="art-panel">
-        <span class="art-panel-title"></span>
-        <div class="art-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-        <div class="art-panel-lines"><i></i><i></i></div>
+
+  <section class="surface-card import-card" aria-labelledby="import-title">
+    <div class="import-intro">
+      <div>
+        <span class="feature-number">ИСТОЧНИК ДАННЫХ</span>
+        <h2 id="import-title">Отчёты реализации</h2>
+        <p>Выберите даты и загрузите список отчётов. Запрос ограничен одним разом в минуту.</p>
       </div>
-      <div class="art-floating"><span class="art-sparkle">✦</span><span></span><span></span></div>
+      <span class="connection-pill {% if token_configured %}connected{% endif %}">
+        <span></span>{% if token_configured %}Токен указан{% else %}Токен не указан{% endif %}
+      </span>
     </div>
+    {% if not token_configured %}
+      <p class="notice">Для загрузки создайте в корне проекта файл <code>.env</code> и добавьте строку <code>КОСТРИК=ваш_токен</code>. Нужен персональный или сервисный токен с категорией «Финансы».</p>
+    {% endif %}
+    <form method="post" class="import-form">
+      {% csrf_token %}
+      <div class="form-field"><label for="{{ form.date_from.id_for_label }}">Начало периода</label>{{ form.date_from }}</div>
+      <div class="form-field"><label for="{{ form.date_to.id_for_label }}">Конец периода</label>{{ form.date_to }}</div>
+      <div class="form-field"><label for="{{ form.period.id_for_label }}">Периодичность</label>{{ form.period }}</div>
+      <button type="submit" class="primary-button" {% if not token_configured %}disabled{% endif %}>Загрузить отчёты</button>
+    </form>
+    {% if form.errors %}<div class="alert error" role="alert">Проверьте период: {{ form.non_field_errors }}{% for field in form %}{{ field.errors }}{% endfor %}</div>{% endif %}
+    {% if error %}<div class="alert error" role="alert">{{ error }}</div>{% endif %}
+    {% if success %}<div class="alert success" role="status">{{ success }}</div>{% endif %}
   </section>
-  <div class="section-heading"><h2>Скоро здесь</h2><span>Следующие шаги</span></div>
-  <div class="feature-grid">
-    <article class="feature-card"><span class="feature-number">01</span><h3>Продажи</h3><p>Динамика заказов и выкупов по выбранному периоду.</p></article>
-    <article class="feature-card"><span class="feature-number">02</span><h3>Расходы</h3><p>Комиссии, логистика и другие начисления в одном месте.</p></article>
-    <article class="feature-card"><span class="feature-number">03</span><h3>Прибыль</h3><p>Понятный результат с учётом себестоимости товаров.</p></article>
-  </div>
+
+  {% if snapshot %}
+    <div class="data-heading">
+      <div><h2>Последняя загрузка</h2><p>{{ snapshot.date_from|date:'d.m.Y' }} — {{ snapshot.date_to|date:'d.m.Y' }} · {% if snapshot.period == 'weekly' %}еженедельные{% else %}ежедневные{% endif %} отчёты · загружено {{ snapshot.fetched_at|date:'d.m.Y H:i' }} (МСК)</p></div>
+      <span class="count-pill">{{ report_count }} отчётов</span>
+    </div>
+    {% for summary in summaries %}
+      <section class="summary-section" aria-label="Суммы по валюте {{ summary.currency }}">
+        <div class="section-heading"><h2>Суммы по отчётам · {{ summary.currency }}</h2></div>
+        <div class="summary-grid">
+          {% for item in summary.values %}<article class="surface-card summary-card"><span>{{ item.label }}</span><strong>{{ item.amount }} <small>{{ summary.currency }}</small></strong></article>{% endfor %}
+        </div>
+      </section>
+    {% endfor %}
+    {% if report_rows %}
+      <section class="surface-card table-card" aria-labelledby="reports-title">
+        <div class="table-title"><h2 id="reports-title">Список отчётов</h2><p>Это суммы из списка отчётов WB, а не расчёт чистой прибыли.</p></div>
+        <div class="table-scroll"><table>
+          <thead><tr><th>ID отчёта</th><th>Период</th><th>Тип WB</th><th>К перечислению за товар</th><th>Логистика</th><th>Все поля</th></tr></thead>
+          <tbody>{% for row in report_rows %}<tr>
+            <td class="report-id">{{ row.id }}</td><td>{{ row.from }} — {{ row.to }}</td><td>{{ row.type }}</td>
+            <td>{{ row.for_pay }} {{ row.currency }}</td><td>{{ row.delivery }} {{ row.currency }}</td>
+            <td><details class="raw-details"><summary>Показать</summary><pre>{{ row.raw }}</pre></details></td>
+          </tr>{% endfor %}</tbody>
+        </table></div>
+      </section>
+    {% else %}
+      <div class="surface-card empty-data">За выбранный период отчётов не найдено.</div>
+    {% endif %}
+  {% else %}
+    <div class="surface-card empty-data"><div class="empty-icon">↗</div><h2>Пока нет данных</h2><p>После первой загрузки здесь появятся суммы и список отчётов Wildberries.</p></div>
+  {% endif %}
 {% endblock %}
