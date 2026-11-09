@@ -193,6 +193,7 @@ def home(request):
     return render(request, 'dashboard/home.html', context)
 
 
+@never_cache
 @require_GET
 def report_status(request, snapshot_id):
     snapshot = ReportSnapshot.objects.filter(pk=snapshot_id).first()
@@ -204,9 +205,17 @@ def report_status(request, snapshot_id):
         'complete': snapshot.detail_complete,
         'error': snapshot.detail_error,
     }
+    context = report_context(snapshot)
+    result['reports'] = [
+        {
+            'id': row['id'], 'from': row['from'], 'to': row['to'],
+            'html': render_to_string('dashboard/deduction_contents.html', {'row': row}, request=request),
+        }
+        for row in context['report_rows'] if row['detail_complete']
+    ]
     if snapshot.detail_complete or snapshot.detail_error:
         result['html'] = render_to_string('dashboard/report_results.html', {
-            'snapshot': snapshot, **report_context(snapshot),
+            'snapshot': snapshot, **context,
         }, request=request)
     return JsonResponse(result)
 

@@ -79,6 +79,37 @@ class WildberriesReportTests(TestCase):
         worker.assert_not_called()
 
     @patch('dashboard.views.start_detail_worker')
+    def test_status_exposes_ready_detail_before_other_reports_finish(self, _worker):
+        snapshot = ReportSnapshot.objects.create(
+            date_from=date(2026, 10, 1), date_to=date(2026, 10, 31), period='weekly',
+            reports=[
+                {'reportId': 1, 'dateFrom': '2026-10-19', 'dateTo': '2026-10-25', 'deductionSum': '5'},
+                {'reportId': 2, 'dateFrom': '2026-10-26', 'dateTo': '2026-10-31', 'deductionSum': '7'},
+            ],
+        )
+        ReportDetail.objects.create(
+            report_id='1', source='report', complete=True,
+            entries=[{'reason': 'Продвижение', 'amount': '5'}],
+        )
+        pending = ReportDetail.objects.create(report_id='2', source='report')
+        page = self.open_result(snapshot)
+        self.assertContains(page, 'data-report-id="1" data-detail-complete="true"')
+        self.assertContains(page, 'data-report-id="2" data-detail-complete="false"')
+        status = self.client.get(f'/reports/status/{snapshot.pk}/').json()
+        self.assertFalse(status['complete'])
+        self.assertEqual([row['id'] for row in status['reports']], ['1'])
+        self.assertEqual(status['reports'][0]['from'], '19.10.2026')
+        self.assertEqual(status['reports'][0]['to'], '25.10.2026')
+        self.assertIn('Продвижение', status['reports'][0]['html'])
+        self.assertIn('5.00', status['reports'][0]['html'])
+        pending.complete = True
+        pending.entries = [{'reason': 'Другая услуга', 'amount': '7'}]
+        pending.save()
+        status = self.client.get(f'/reports/status/{snapshot.pk}/').json()
+        self.assertEqual([row['id'] for row in status['reports']], ['1', '2'])
+        self.assertIn('Другая услуга', status['reports'][1]['html'])
+
+    @patch('dashboard.views.start_detail_worker')
     def test_report_columns_use_summary_fields(self, _worker):
         snapshot = ReportSnapshot.objects.create(
             date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),

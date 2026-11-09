@@ -21,18 +21,9 @@
             <td class="report-id">{{ row.id }}</td><td>{{ row.from }} — {{ row.to }}</td><td>{{ row.type }}</td>
             <td>{{ row.for_pay }}</td><td>{{ row.sold }}</td><td>{{ row.delivery }}</td>
             <td>{{ row.storage }}</td>
-            <td><button class="deduction-trigger" type="button" aria-expanded="false" aria-controls="deduction-panel-{{ row.id }}" aria-label="Состав удержаний и выплат отчёта №{{ row.id }}: {{ row.deduction }}">{{ row.deduction }}</button>
+            <td><button class="deduction-trigger" type="button" data-report-id="{{ row.id }}" data-detail-complete="{{ row.detail_complete|yesno:'true,false' }}" aria-expanded="false" aria-controls="deduction-panel-{{ row.id }}" aria-label="Состав удержаний и выплат отчёта №{{ row.id }}: {{ row.deduction }}">{{ row.deduction }}</button>
               <div class="deduction-panel" id="deduction-panel-{{ row.id }}" hidden>
-                <strong>Состав удержаний/выплат</strong>
-                {% if row.detail_rows %}
-                  <ul>{% for entry in row.detail_rows %}<li><span>{{ entry.reason }}</span><b>{{ entry.formatted_amount }}</b></li>{% endfor %}</ul>
-                {% endif %}
-                {% if row.detail_complete %}
-                  {% if not row.detail_rows %}<p>Удержаний и выплат в детализации не найдено.</p>{% endif %}
-                  {% if row.detail_matches is False %}<p>Сумма строк отличается от итога отчёта. Требуется сверка.</p>{% endif %}
-                {% else %}
-                  <p>Детализация ещё загружается. Суммы появятся после завершения.</p>
-                {% endif %}
+                {% include 'dashboard/deduction_contents.html' %}
               </div>
             </td>
             <td>{{ row.penalty }}</td>

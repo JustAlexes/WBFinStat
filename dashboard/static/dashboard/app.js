@@ -328,19 +328,71 @@
 
   const detailStatus = document.querySelector('[data-status-url]');
   if (detailStatus) {
+    const readyReports = new Set([...document.querySelectorAll('.deduction-trigger[data-detail-complete="true"]')]
+      .map(button => button.dataset.reportId));
+    const notifications = document.createElement('div');
+    notifications.className = 'detail-notifications';
+    notifications.setAttribute('role', 'region');
+    notifications.setAttribute('aria-label', 'Уведомления о загрузке отчётов');
+    document.body.appendChild(notifications);
+
+    function notifyReport(report) {
+      const toast = document.createElement('div');
+      toast.className = 'detail-toast';
+      toast.setAttribute('role', 'status');
+      toast.setAttribute('aria-atomic', 'true');
+      const icon = document.createElement('span');
+      icon.className = 'detail-toast-icon';
+      icon.textContent = '✓';
+      icon.setAttribute('aria-hidden', 'true');
+      const copy = document.createElement('div');
+      const title = document.createElement('strong');
+      title.textContent = `Детализация отчёта №${report.id} загружена`;
+      const period = document.createElement('p');
+      period.textContent = `${report.from} — ${report.to}`;
+      copy.append(title, period);
+      const dismiss = document.createElement('button');
+      dismiss.type = 'button';
+      dismiss.textContent = '×';
+      dismiss.setAttribute('aria-label', 'Закрыть уведомление');
+      const timeout = window.setTimeout(() => toast.remove(), 10000);
+      dismiss.addEventListener('click', () => {
+        window.clearTimeout(timeout);
+        toast.remove();
+      });
+      toast.append(icon, copy, dismiss);
+      notifications.appendChild(toast);
+    }
+
     const checkStatus = async () => {
+      let finished = false;
       try {
         const response = await fetch(detailStatus.dataset.statusUrl);
         if (!response.ok) return;
         const status = await response.json();
+        for (const report of status.reports || []) {
+          if (readyReports.has(report.id)) continue;
+          const panel = document.getElementById(`deduction-panel-${report.id}`);
+          if (!panel || typeof report.html !== 'string') continue;
+          panel.innerHTML = report.html;
+          const button = document.querySelector(`.deduction-trigger[data-report-id="${report.id}"]`);
+          if (button) button.dataset.detailComplete = 'true';
+          readyReports.add(report.id);
+          if (activeDeduction?.panel === panel) placeDeduction();
+          notifyReport(report);
+        }
         if (status.complete || status.error) {
-          if (typeof status.html !== 'string') return;
-          closeDeduction();
-          document.getElementById('report-results').innerHTML = status.html;
-          window.clearInterval(statusTimer);
+          finished = true;
+          detailStatus.className = status.error ? 'alert error' : 'alert success';
+          detailStatus.textContent = status.error
+            ? `Детализация: ${status.error}` : 'Детализация всех отчётов загружена.';
+          detailStatus.removeAttribute('data-status-url');
         }
       } catch (error) { /* Try again on the next poll. */ }
+      finally {
+        if (!finished && detailStatus.isConnected) window.setTimeout(checkStatus, 10000);
+      }
     };
-    const statusTimer = window.setInterval(checkStatus, 10000);
+    window.setTimeout(checkStatus, 10000);
   }
 })();
