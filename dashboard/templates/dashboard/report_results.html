@@ -5,10 +5,10 @@
     </div>
     {% if snapshot.detail_error %}<div class="alert error" role="alert">Детализация: {{ snapshot.detail_error }}</div>{% elif not snapshot.detail_complete %}<div class="notice detail-status" role="status" data-status-url="{% url 'report_status' snapshot.pk %}">Расшифровка удержаний загружается автоматически. Это может занять несколько минут из-за лимита Wildberries.</div>{% endif %}
     {% for summary in summaries %}
-      <section class="summary-section" aria-label="Суммы по валюте {{ summary.currency }}">
-        <div class="section-heading"><h2>Суммы по отчётам · {{ summary.currency }}</h2></div>
+      <section class="summary-section" aria-label="Суммы по отчётам">
+        <div class="section-heading"><h2>Суммы по отчётам</h2></div>
         <div class="summary-grid">
-          {% for item in summary.values %}<article class="surface-card summary-card"><span>{{ item.label }}</span><strong>{{ item.amount }} <small>{{ summary.currency }}</small></strong></article>{% endfor %}
+          {% for item in summary.values %}<article class="surface-card summary-card"><span>{{ item.label }}</span><strong>{{ item.amount }}</strong></article>{% endfor %}
         </div>
       </section>
     {% endfor %}
@@ -19,13 +19,13 @@
           <thead><tr><th>ID отчёта</th><th>Период</th><th>Тип отчёта</th><th>К перечислению за товар</th><th>Продано</th><th>Логистика</th><th>Хранение</th><th>Удержания/Выплаты</th><th>Штрафы</th><th>Компенсация скидки по программе лояльности</th><th>Корректировка Вознаграждения Вайлдберриз</th><th>Стоимость участия в программе лояльности</th><th>Сумма баллов, удержанных по программе лояльности</th><th>Изменение срока перечисления денежных средств</th><th>Итого к оплате</th></tr></thead>
           <tbody>{% for row in report_rows %}<tr id="report-{{ row.id }}">
             <td class="report-id">{{ row.id }}</td><td>{{ row.from }} — {{ row.to }}</td><td>{{ row.type }}</td>
-            <td>{{ row.for_pay }} {{ row.currency }}</td><td>{{ row.sold }} {{ row.currency }}</td><td>{{ row.delivery }} {{ row.currency }}</td>
-            <td>{{ row.storage }} {{ row.currency }}</td>
-            <td><button class="deduction-trigger" type="button" aria-expanded="false" aria-controls="deduction-panel-{{ row.id }}" aria-label="Состав удержаний и выплат отчёта №{{ row.id }}: {{ row.deduction }} {{ row.currency }}">{{ row.deduction }} {{ row.currency }}</button>
+            <td>{{ row.for_pay }}</td><td>{{ row.sold }}</td><td>{{ row.delivery }}</td>
+            <td>{{ row.storage }}</td>
+            <td><button class="deduction-trigger" type="button" aria-expanded="false" aria-controls="deduction-panel-{{ row.id }}" aria-label="Состав удержаний и выплат отчёта №{{ row.id }}: {{ row.deduction }}">{{ row.deduction }}</button>
               <div class="deduction-panel" id="deduction-panel-{{ row.id }}" hidden>
                 <strong>Состав удержаний/выплат</strong>
                 {% if row.detail_rows %}
-                  <ul>{% for entry in row.detail_rows %}<li><span>{{ entry.reason }}</span><b>{{ entry.formatted_amount }} {{ row.currency }}</b></li>{% endfor %}</ul>
+                  <ul>{% for entry in row.detail_rows %}<li><span>{{ entry.reason }}</span><b>{{ entry.formatted_amount }}</b></li>{% endfor %}</ul>
                 {% endif %}
                 {% if row.detail_complete %}
                   {% if not row.detail_rows %}<p>Удержаний и выплат в детализации не найдено.</p>{% endif %}
@@ -35,13 +35,13 @@
                 {% endif %}
               </div>
             </td>
-            <td>{{ row.penalty }} {{ row.currency }}</td>
-            <td>{{ row.loyalty_compensation }} {{ row.currency }}</td>
-            <td>{{ row.reward_adjustment }} {{ row.currency }}</td>
-            <td>{{ row.loyalty_fee }} {{ row.currency }}</td>
-            <td>{{ row.loyalty_points }} {{ row.currency }}</td>
-            <td>{{ row.payment_schedule }} {{ row.currency }}</td>
-            <td class="total-payment">{{ row.total_to_pay }} {{ row.currency }}</td>
+            <td>{{ row.penalty }}</td>
+            <td>{{ row.loyalty_compensation }}</td>
+            <td>{{ row.reward_adjustment }}</td>
+            <td>{{ row.loyalty_fee }}</td>
+            <td>{{ row.loyalty_points }}</td>
+            <td>{{ row.payment_schedule }}</td>
+            <td class="total-payment">{{ row.total_to_pay }}</td>
           </tr>{% endfor %}</tbody>
         </table></div>
       </section>
