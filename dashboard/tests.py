@@ -3,6 +3,7 @@ from unittest.mock import Mock, patch
 
 from django.test import TestCase
 
+from dashboard.forms import ReportPeriodForm
 from dashboard.models import ReportDetail, ReportSnapshot
 from dashboard.services.detail_worker import _run
 from dashboard.services.wildberries import (
@@ -182,7 +183,7 @@ class WildberriesReportTests(TestCase):
         page = self.client.post('/', {
             'date_from': '2026-10-01',
             'date_to': '2026-10-31',
-            'period': 'weekly',
+            'period': 'daily',
         }, follow=True)
 
         self.assertEqual(page.status_code, 200)
@@ -190,6 +191,7 @@ class WildberriesReportTests(TestCase):
         self.assertEqual(ReportSnapshot.objects.count(), 1)
         self.assertEqual(ReportSnapshot.objects.first().reports[0]['reportId'], 123)
         self.assertEqual(post.call_args.kwargs['json']['period'], 'weekly')
+        self.assertEqual(ReportSnapshot.objects.first().period, 'weekly')
         self.assertEqual(post.call_args.kwargs['headers']['Authorization'], 'test-token')
         worker.assert_called()
         snapshot = ReportSnapshot.objects.first()
@@ -235,3 +237,43 @@ class WildberriesReportTests(TestCase):
         with self.assertRaises(WildberriesError):
             fetch_report_list(date(2026, 10, 1), date(2026, 10, 2), 'daily')
         self.assertFalse(ReportSnapshot.objects.exists())
+
+
+class ReportPeriodFormTests(TestCase):
+    @patch('dashboard.forms.timezone.localdate', return_value=date(2026, 11, 9))
+    def test_weeks_and_month_boundaries_are_allowed(self, _today):
+        for start, end in [
+            ('2026-10-19', '2026-10-25'),
+            ('2026-10-26', '2026-10-31'),
+            ('2026-11-01', '2026-11-01'),
+            ('2026-10-26', '2026-11-01'),
+            ('2026-10-01', '2026-10-31'),
+            ('2026-11-02', '2026-11-08'),
+        ]:
+            with self.subTest(start=start, end=end):
+                form = ReportPeriodForm({'date_from': start, 'date_to': end})
+                self.assertTrue(form.is_valid(), form.errors)
+
+    @patch('dashboard.forms.timezone.localdate', return_value=date(2026, 11, 9))
+    def test_partial_weeks_and_unavailable_dates_are_rejected(self, _today):
+        for start, end in [
+            ('2026-10-27', '2026-10-31'),
+            ('2026-11-01', '2026-11-03'),
+            ('2026-11-09', '2026-11-15'),
+            ('2026-11-02', '2026-11-01'),
+            ('2023-01-01', '2023-01-31'),
+            ('2024-01-29', '2026-11-08'),
+        ]:
+            with self.subTest(start=start, end=end):
+                self.assertFalse(ReportPeriodForm({'date_from': start, 'date_to': end}).is_valid())
+
+    @patch('dashboard.forms.timezone.localdate', return_value=date(2024, 3, 4))
+    def test_leap_year_month_boundary(self, _today):
+        form = ReportPeriodForm({'date_from': '2024-02-26', 'date_to': '2024-02-29'})
+        self.assertTrue(form.is_valid(), form.errors)
+
+    @patch('dashboard.views.fetch_report_list')
+    def test_invalid_week_does_not_call_wildberries(self, fetch):
+        response = self.client.post('/', {'date_from': '2026-10-27', 'date_to': '2026-10-31'})
+        self.assertContains(response, 'Период должен начинаться в понедельник')
+        fetch.assert_not_called()

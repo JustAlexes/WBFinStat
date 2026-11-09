@@ -1,3 +1,4 @@
+from calendar import monthrange
 from datetime import date, timedelta
 
 from django import forms
@@ -6,14 +7,12 @@ from django.utils import timezone
 
 class ReportPeriodForm(forms.Form):
     date_from = forms.DateField(
-        label='Начало', widget=forms.DateInput(attrs={'type': 'date'})
+        label='Начало периода',
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'type': 'hidden'}),
     )
     date_to = forms.DateField(
-        label='Конец', widget=forms.DateInput(attrs={'type': 'date'})
-    )
-    period = forms.ChoiceField(
-        label='Тип отчёта',
-        choices=[('weekly', 'Еженедельный'), ('daily', 'Ежедневный')],
+        label='Конец периода',
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'type': 'hidden'}),
     )
 
     def clean(self):
@@ -29,4 +28,12 @@ class ReportPeriodForm(forms.Form):
                 raise forms.ValidationError('Дата конца не может быть в будущем.')
             if end - start > timedelta(days=365):
                 raise forms.ValidationError('Выберите период не длиннее 365 дней.')
+            if start.weekday() != 0 and start.day != 1:
+                raise forms.ValidationError(
+                    'Период должен начинаться в понедельник или в первый день месяца.'
+                )
+            if end.weekday() != 6 and end.day != monthrange(end.year, end.month)[1]:
+                raise forms.ValidationError(
+                    'Период должен заканчиваться в воскресенье или в последний день месяца.'
+                )
         return cleaned

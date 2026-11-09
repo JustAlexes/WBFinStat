@@ -1,5 +1,5 @@
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
@@ -138,11 +138,7 @@ def home(request):
         except (ValueError, OverflowError):
             pass
     today = timezone.localdate()
-    initial = {
-        'date_from': snapshot.date_from if snapshot else today - timedelta(days=30),
-        'date_to': snapshot.date_to if snapshot else today,
-        'period': snapshot.period if snapshot else 'weekly',
-    }
+    initial = {'date_from': snapshot.date_from, 'date_to': snapshot.date_to} if snapshot else {}
     form = ReportPeriodForm(request.POST or None, initial=initial)
     error = None
 
@@ -150,12 +146,12 @@ def home(request):
         try:
             data = form.cleaned_data
             reports = fetch_report_list(
-                data['date_from'], data['date_to'], data['period']
+                data['date_from'], data['date_to'], 'weekly'
             )
             snapshot = ReportSnapshot.objects.create(
                 date_from=data['date_from'],
                 date_to=data['date_to'],
-                period=data['period'],
+                period='weekly',
                 reports=reports,
             )
             complete = prepare_details(snapshot)
@@ -179,6 +175,7 @@ def home(request):
         'snapshot': snapshot,
         'error': error,
         'token_configured': bool(get_token()),
+        'calendar_today': today.isoformat(),
         **report_context(snapshot),
     }
     return render(request, 'dashboard/home.html', context)
