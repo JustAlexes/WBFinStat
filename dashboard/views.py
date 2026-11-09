@@ -2,8 +2,10 @@ from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 
+from django.contrib import messages
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
 
@@ -129,15 +131,19 @@ def report_context(snapshot):
 
 @require_http_methods(['GET', 'POST'])
 def home(request):
+    snapshot = None
+    if request.method == 'GET' and request.GET.get('snapshot'):
+        try:
+            snapshot = ReportSnapshot.objects.filter(pk=request.GET['snapshot']).first()
+        except (ValueError, OverflowError):
+            pass
     today = timezone.localdate()
     initial = {
-        'date_from': today - timedelta(days=30),
-        'date_to': today,
-        'period': 'weekly',
+        'date_from': snapshot.date_from if snapshot else today - timedelta(days=30),
+        'date_to': snapshot.date_to if snapshot else today,
+        'period': snapshot.period if snapshot else 'weekly',
     }
     form = ReportPeriodForm(request.POST or None, initial=initial)
-    snapshot = ReportSnapshot.objects.first()
-    success = None
     error = None
 
     if request.method == 'POST' and form.is_valid():
@@ -155,7 +161,11 @@ def home(request):
             complete = prepare_details(snapshot)
             if not complete:
                 start_detail_worker(snapshot.pk)
-            success = f'Загружено отчётов: {len(reports)}. Детализация подгружается автоматически.'
+            message = f'Загружено отчётов: {len(reports)}.'
+            if not complete:
+                message += ' Детализация подгружается автоматически.'
+            messages.success(request, message)
+            return redirect(f"{reverse('home')}?snapshot={snapshot.pk}")
         except WildberriesError as exc:
             error = str(exc)
 
@@ -167,7 +177,6 @@ def home(request):
     context = {
         'form': form,
         'snapshot': snapshot,
-        'success': success,
         'error': error,
         'token_configured': bool(get_token()),
         **report_context(snapshot),

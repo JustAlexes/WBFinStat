@@ -15,8 +15,37 @@ from dashboard.services.wildberries import (
 
 class WildberriesReportTests(TestCase):
     @patch('dashboard.views.start_detail_worker')
-    def test_report_columns_use_summary_fields(self, _worker):
+    @patch('dashboard.views.fetch_report_list')
+    def test_landing_page_does_not_show_or_fetch_previous_reports(self, fetch, worker):
+        snapshot = ReportSnapshot.objects.create(
+            date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),
+            period='weekly', reports=[{'reportId': 835092276, 'deductionSum': '154330'}],
+            detail_error='Не удалось загрузить детализацию Wildberries.',
+        )
+        page = self.client.get('/')
+        self.assertIsNone(page.context['snapshot'])
+        self.assertEqual(page.context['report_rows'], [])
+        self.assertContains(page, 'Выберите период отчётов')
+        self.assertNotContains(page, 'Не удалось загрузить детализацию')
+        self.assertNotContains(page, '835092276')
+        self.assertNotContains(page, 'data-status-url')
+        self.assertTrue(ReportSnapshot.objects.filter(pk=snapshot.pk).exists())
+        fetch.assert_not_called()
+        worker.assert_not_called()
+
+    @patch('dashboard.views.start_detail_worker')
+    def test_landing_page_does_not_resume_pending_details(self, worker):
         ReportSnapshot.objects.create(
+            date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),
+            period='weekly', reports=[{'reportId': 835092276, 'deductionSum': '154330'}],
+        )
+        self.client.get('/')
+        worker.assert_not_called()
+        self.assertFalse(ReportDetail.objects.exists())
+
+    @patch('dashboard.views.start_detail_worker')
+    def test_report_columns_use_summary_fields(self, _worker):
+        snapshot = ReportSnapshot.objects.create(
             date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),
             period='weekly', reports=[{
                 'reportId': 835092276,
@@ -36,7 +65,7 @@ class WildberriesReportTests(TestCase):
                 'bankPaymentSum': '514684.5',
             }],
         )
-        page = self.client.get('/')
+        page = self.client.get(f'/?snapshot={snapshot.pk}')
         row = page.context['report_rows'][0]
         self.assertEqual(row['sold'], '1 075 580.00')
         self.assertEqual(row['storage'], '743.99')
@@ -60,11 +89,11 @@ class WildberriesReportTests(TestCase):
 
     @patch('dashboard.views.start_detail_worker')
     def test_buyout_report_type_is_named(self, _worker):
-        ReportSnapshot.objects.create(
+        snapshot = ReportSnapshot.objects.create(
             date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),
             period='weekly', reports=[{'reportId': 2, 'reportType': 2}],
         )
-        self.assertEqual(self.client.get('/').context['report_rows'][0]['type'], 'По выкупам')
+        self.assertEqual(self.client.get(f'/?snapshot={snapshot.pk}').context['report_rows'][0]['type'], 'По выкупам')
 
     @patch('dashboard.services.detail_worker.close_old_connections')
     @patch('dashboard.services.detail_worker.time.sleep')
@@ -87,7 +116,7 @@ class WildberriesReportTests(TestCase):
         self.assertTrue(snapshot.detail_complete)
         self.assertEqual(ReportDetail.objects.get(report_id='835092276').entries[0]['amount'], '100000')
         with patch('dashboard.views.start_detail_worker'):
-            page = self.client.get('/')
+            page = self.client.get(f'/?snapshot={snapshot.pk}')
         row = page.context['report_rows'][0]
         self.assertEqual(len(row['detail_rows']), 1)
         self.assertEqual(row['detail_rows'][0]['formatted_amount'], '154 330.00')
@@ -103,7 +132,7 @@ class WildberriesReportTests(TestCase):
             detail_complete=True,
         )
         ReportDetail.objects.create(report_id='835092276', complete=True, entries=[])
-        page = self.client.get('/')
+        page = self.client.get(f'/?snapshot={snapshot.pk}')
         snapshot.refresh_from_db()
         detail = ReportDetail.objects.get(report_id='835092276')
         self.assertFalse(snapshot.detail_complete)
@@ -114,7 +143,7 @@ class WildberriesReportTests(TestCase):
 
     @patch('dashboard.views.start_detail_worker')
     def test_completed_report_detail_remains_cached(self, worker):
-        ReportSnapshot.objects.create(
+        snapshot = ReportSnapshot.objects.create(
             date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),
             period='weekly', reports=[{'reportId': 835092276, 'deductionSum': '154330'}],
             detail_complete=True,
@@ -123,8 +152,8 @@ class WildberriesReportTests(TestCase):
             report_id='835092276', complete=True, source='report',
             entries=[{'amount': '154330', 'reason': 'Продвижение'}],
         )
-        self.client.get('/')
-        self.client.get('/')
+        self.client.get(f'/?snapshot={snapshot.pk}')
+        self.client.get(f'/?snapshot={snapshot.pk}')
         worker.assert_not_called()
 
     @patch('dashboard.services.wildberries.get_token', return_value='test-token')
@@ -154,7 +183,7 @@ class WildberriesReportTests(TestCase):
             'date_from': '2026-10-01',
             'date_to': '2026-10-31',
             'period': 'weekly',
-        })
+        }, follow=True)
 
         self.assertEqual(page.status_code, 200)
         self.assertContains(page, '183.79')
@@ -163,6 +192,11 @@ class WildberriesReportTests(TestCase):
         self.assertEqual(post.call_args.kwargs['json']['period'], 'weekly')
         self.assertEqual(post.call_args.kwargs['headers']['Authorization'], 'test-token')
         worker.assert_called()
+        snapshot = ReportSnapshot.objects.first()
+        self.assertRedirects(page, f'/?snapshot={snapshot.pk}')
+        self.client.get(f'/?snapshot={snapshot.pk}')
+        self.assertEqual(post.call_count, 1)
+        self.assertIsNone(self.client.get('/').context['snapshot'])
 
     @patch('dashboard.services.wildberries.get_token', return_value='test-token')
     @patch('dashboard.services.wildberries.requests.post')
@@ -186,9 +220,11 @@ class WildberriesReportTests(TestCase):
             'date_from': '2026-10-01',
             'date_to': '2026-10-31',
             'period': 'weekly',
-        })
+        }, follow=True)
         self.assertContains(page, 'Доступ запрещён')
         self.assertEqual(ReportSnapshot.objects.count(), 1)
+        self.assertIsNone(page.context['snapshot'])
+        self.assertEqual(page.context['report_rows'], [])
 
     @patch('dashboard.services.wildberries.get_token', return_value='test-token')
     @patch('dashboard.services.wildberries.requests.post')

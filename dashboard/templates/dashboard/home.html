@@ -30,7 +30,6 @@
     </form>
     {% if form.errors %}<div class="alert error" role="alert">Проверьте период: {{ form.non_field_errors }}{% for field in form %}{{ field.errors }}{% endfor %}</div>{% endif %}
     {% if error %}<div class="alert error" role="alert">{{ error }}</div>{% endif %}
-    {% if success %}<div class="alert success" role="status">{{ success }}</div>{% endif %}
     {% for message in messages %}<div class="alert {% if message.tags == 'error' %}error{% else %}success{% endif %}" role="status">{{ message }}</div>{% endfor %}
   </section>
 
@@ -85,6 +84,6 @@
       <div class="surface-card empty-data">За выбранный период отчётов не найдено.</div>
     {% endif %}
   {% else %}
-    <div class="surface-card empty-data"><div class="empty-icon">↗</div><h2>Пока нет данных</h2><p>После первой загрузки здесь появятся суммы и список отчётов Wildberries.</p></div>
+    <div class="surface-card empty-data"><div class="empty-icon">↗</div><h2>Выберите период отчётов</h2><p>Укажите даты и нажмите «Загрузить отчёты», чтобы увидеть данные.</p></div>
   {% endif %}
 {% endblock %}
