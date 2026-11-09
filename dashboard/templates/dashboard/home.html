@@ -1,19 +1,18 @@
 {% extends 'dashboard/base.html' %}
 {% load static %}
 {% block title %}Главная · FinStat{% endblock %}
-{% block page_scripts %}<script src="{% static 'dashboard/home.js' %}?v=20261109-1" defer></script>{% endblock %}
+{% block page_scripts %}<script src="{% static 'dashboard/home.js' %}?v=20261109-2" defer></script>{% endblock %}
+{% block page_class %}workspace-home{% endblock %}
 {% block content %}
+  <div class="landscape-background" aria-hidden="true"><canvas data-landscape-canvas></canvas></div>
+  <div class="home-shell" data-landscape-content>
   <div class="page-heading home-heading">
     <div><div class="eyebrow"><span class="eyebrow-dot"></span> ТВОЁ РАБОЧЕЕ ПРОСТРАНСТВО</div><h1>Привет, Александр.</h1><p>Всё начинается с ясной картины.</p></div>
     <span class="home-edition">FINSTAT <span>01 / WORKSPACE</span></span>
   </div>
-  <section class="kinetic-stage" aria-labelledby="kinetic-title" data-kinetic-stage>
-    <div class="kinetic-grid" aria-hidden="true"></div>
-    <div class="kinetic-topline"><span><i></i> ДАННЫЕ В ДВИЖЕНИИ</span><span>НАВЕДИ КУРСОР</span></div>
-    <h2 id="kinetic-title" class="kinetic-accessible">FinStat — финансы под твоим контролем</h2>
-    <div class="kinetic-fallback" aria-hidden="true">Fin<span>Stat</span></div>
-    <canvas class="kinetic-canvas" aria-hidden="true"></canvas>
-    <div class="kinetic-bottomline"><p>Разбросай цифры.<br><span>Они знают, куда вернуться.</span></p><button type="button" class="kinetic-impulse">Запустить импульс <span aria-hidden="true">↗</span></button></div>
+  <section class="landscape-space" aria-label="Интерактивный световой рельеф: движение курсора меняет поверхность, нажатие запускает волну">
+    <div class="landscape-caption"><span class="landscape-indicator"><i></i> ЖИВОЕ ПРОСТРАНСТВО</span><p>Двигай курсор. Меняй рельеф.<br><span>Нажми, чтобы запустить волну.</span></p></div>
+    <button type="button" class="landscape-impulse">Новая волна <span aria-hidden="true">↗</span></button>
   </section>
   <div class="home-section-label"><span>ВЫБЕРИ НАПРАВЛЕНИЕ</span><span>ДВА ВЗГЛЯДА НА БИЗНЕС</span></div>
   <div class="workspace-links">
@@ -25,5 +24,6 @@
       <span class="workspace-icon"><svg class="icon"><use href="#icon-products"></use></svg></span>
       <span class="workspace-link-copy"><span class="workspace-index">02 / ТОВАРЫ</span><h2>Ассортимент</h2><p>От общей суммы — к артикулу.<br>Место для товарной аналитики.</p></span><span class="workspace-arrow" aria-hidden="true">↗</span>
     </a>
+  </div>
   </div>
 {% endblock %}

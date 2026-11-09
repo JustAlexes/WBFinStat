@@ -12,8 +12,8 @@
       if (localStorage.getItem('finstat-sidebar') === 'collapsed' || (!localStorage.getItem('finstat-sidebar') && matchMedia('(max-width: 700px)').matches)) document.documentElement.classList.add('sidebar-collapsed');
     } catch (error) { /* Storage may be unavailable; use defaults. */ }
   </script>
-  <link rel="stylesheet" href="{% static 'dashboard/app.css' %}?v=20261109-5">
-  <script src="{% static 'dashboard/app.js' %}?v=20261109-5" defer></script>
+  <link rel="stylesheet" href="{% static 'dashboard/app.css' %}?v=20261109-6">
+  <script src="{% static 'dashboard/app.js' %}?v=20261109-6" defer></script>
   {% block page_scripts %}{% endblock %}
 </head>
 <body>
@@ -68,7 +68,7 @@
         <div class="breadcrumb">FinStat <span>/</span> <strong>{% block breadcrumb %}Главная{% endblock %}</strong></div>
         <span class="topbar-badge">Wildberries</span>
       </header>
-      <main class="page-content" id="main-content">{% block content %}{% endblock %}</main>
+      <main class="page-content {% block page_class %}{% endblock %}" id="main-content">{% block content %}{% endblock %}</main>
     </div>
   </div>
 </body>

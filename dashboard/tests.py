@@ -22,7 +22,9 @@ class WorkspaceNavigationTests(TestCase):
         session['report_result_id'] = 123
         session.save()
         page = self.client.get('/')
-        self.assertContains(page, 'data-kinetic-stage')
+        self.assertContains(page, 'data-landscape-canvas')
+        self.assertContains(page, 'workspace-home')
+        self.assertNotContains(page, 'kinetic-stage')
         self.assertContains(page, 'home.js')
         self.assertNotContains(page, 'data-report-calendar')
         self.assertEqual(self.client.session['report_result_id'], 123)
