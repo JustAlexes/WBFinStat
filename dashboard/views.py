@@ -5,9 +5,11 @@ from decimal import Decimal, InvalidOperation
 from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
+from django.views.decorators.cache import never_cache
 
 from dashboard.forms import ReportPeriodForm
 from dashboard.models import ReportDetail, ReportSnapshot
@@ -129,14 +131,14 @@ def report_context(snapshot):
     }
 
 
+@never_cache
 @require_http_methods(['GET', 'POST'])
 def home(request):
     snapshot = None
-    if request.method == 'GET' and request.GET.get('snapshot'):
-        try:
-            snapshot = ReportSnapshot.objects.filter(pk=request.GET['snapshot']).first()
-        except (ValueError, OverflowError):
-            pass
+    if request.method == 'GET':
+        snapshot_id = request.session.pop('report_result_id', None)
+        if snapshot_id is not None:
+            snapshot = ReportSnapshot.objects.filter(pk=snapshot_id).first()
     today = timezone.localdate()
     initial = {'date_from': snapshot.date_from, 'date_to': snapshot.date_to} if snapshot else {}
     form = ReportPeriodForm(request.POST or None, initial=initial)
@@ -161,7 +163,8 @@ def home(request):
             if not complete:
                 message += ' Детализация подгружается автоматически.'
             messages.success(request, message)
-            return redirect(f"{reverse('home')}?snapshot={snapshot.pk}")
+            request.session['report_result_id'] = snapshot.pk
+            return redirect(reverse('home'))
         except WildberriesError as exc:
             error = str(exc)
 
@@ -188,10 +191,15 @@ def report_status(request, snapshot_id):
         return JsonResponse({'error': 'Отчёт не найден'}, status=404)
     if not snapshot.detail_complete and not snapshot.detail_error:
         start_detail_worker(snapshot.pk)
-    return JsonResponse({
+    result = {
         'complete': snapshot.detail_complete,
         'error': snapshot.detail_error,
-    })
+    }
+    if snapshot.detail_complete or snapshot.detail_error:
+        result['html'] = render_to_string('dashboard/report_results.html', {
+            'snapshot': snapshot, **report_context(snapshot),
+        }, request=request)
+    return JsonResponse(result)
 
 
 def profile(request):

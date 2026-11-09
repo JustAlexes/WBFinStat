@@ -15,6 +15,12 @@ from dashboard.services.wildberries import (
 
 
 class WildberriesReportTests(TestCase):
+    def open_result(self, snapshot):
+        session = self.client.session
+        session['report_result_id'] = snapshot.pk
+        session.save()
+        return self.client.get('/')
+
     @patch('dashboard.views.start_detail_worker')
     @patch('dashboard.views.fetch_report_list')
     def test_landing_page_does_not_show_or_fetch_previous_reports(self, fetch, worker):
@@ -45,6 +51,34 @@ class WildberriesReportTests(TestCase):
         self.assertFalse(ReportDetail.objects.exists())
 
     @patch('dashboard.views.start_detail_worker')
+    def test_old_result_url_cannot_restore_reports(self, worker):
+        snapshot = ReportSnapshot.objects.create(
+            date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),
+            period='weekly', reports=[{'reportId': 835092276, 'deductionSum': '154330'}],
+            detail_error='Не удалось загрузить детализацию Wildberries.',
+        )
+        page = self.client.get(f'/?snapshot={snapshot.pk}')
+        self.assertIsNone(page.context['snapshot'])
+        self.assertNotContains(page, '835092276')
+        self.assertNotContains(page, 'Не удалось загрузить детализацию')
+        worker.assert_not_called()
+
+    @patch('dashboard.views.start_detail_worker')
+    def test_result_is_displayed_once_and_status_updates_without_restoring_home(self, worker):
+        snapshot = ReportSnapshot.objects.create(
+            date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),
+            period='weekly', reports=[{'reportId': 835092276, 'deductionSum': '0'}],
+        )
+        page = self.open_result(snapshot)
+        self.assertContains(page, '835092276')
+        status = self.client.get(f'/reports/status/{snapshot.pk}/').json()
+        self.assertTrue(status['complete'])
+        self.assertIn('835092276', status['html'])
+        self.assertIsNone(self.client.get('/').context['snapshot'])
+        self.assertIsNone(self.client.get(f'/?snapshot={snapshot.pk}').context['snapshot'])
+        worker.assert_not_called()
+
+    @patch('dashboard.views.start_detail_worker')
     def test_report_columns_use_summary_fields(self, _worker):
         snapshot = ReportSnapshot.objects.create(
             date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),
@@ -66,7 +100,7 @@ class WildberriesReportTests(TestCase):
                 'bankPaymentSum': '514684.5',
             }],
         )
-        page = self.client.get(f'/?snapshot={snapshot.pk}')
+        page = self.open_result(snapshot)
         row = page.context['report_rows'][0]
         self.assertEqual(row['sold'], '1 075 580.00')
         self.assertEqual(row['storage'], '743.99')
@@ -94,7 +128,7 @@ class WildberriesReportTests(TestCase):
             date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),
             period='weekly', reports=[{'reportId': 2, 'reportType': 2}],
         )
-        self.assertEqual(self.client.get(f'/?snapshot={snapshot.pk}').context['report_rows'][0]['type'], 'По выкупам')
+        self.assertEqual(self.open_result(snapshot).context['report_rows'][0]['type'], 'По выкупам')
 
     @patch('dashboard.services.detail_worker.close_old_connections')
     @patch('dashboard.services.detail_worker.time.sleep')
@@ -117,7 +151,7 @@ class WildberriesReportTests(TestCase):
         self.assertTrue(snapshot.detail_complete)
         self.assertEqual(ReportDetail.objects.get(report_id='835092276').entries[0]['amount'], '100000')
         with patch('dashboard.views.start_detail_worker'):
-            page = self.client.get(f'/?snapshot={snapshot.pk}')
+            page = self.open_result(snapshot)
         row = page.context['report_rows'][0]
         self.assertEqual(len(row['detail_rows']), 1)
         self.assertEqual(row['detail_rows'][0]['formatted_amount'], '154 330.00')
@@ -133,7 +167,7 @@ class WildberriesReportTests(TestCase):
             detail_complete=True,
         )
         ReportDetail.objects.create(report_id='835092276', complete=True, entries=[])
-        page = self.client.get(f'/?snapshot={snapshot.pk}')
+        page = self.open_result(snapshot)
         snapshot.refresh_from_db()
         detail = ReportDetail.objects.get(report_id='835092276')
         self.assertFalse(snapshot.detail_complete)
@@ -153,8 +187,8 @@ class WildberriesReportTests(TestCase):
             report_id='835092276', complete=True, source='report',
             entries=[{'amount': '154330', 'reason': 'Продвижение'}],
         )
-        self.client.get(f'/?snapshot={snapshot.pk}')
-        self.client.get(f'/?snapshot={snapshot.pk}')
+        self.open_result(snapshot)
+        self.open_result(snapshot)
         worker.assert_not_called()
 
     @patch('dashboard.services.wildberries.get_token', return_value='test-token')
@@ -195,8 +229,8 @@ class WildberriesReportTests(TestCase):
         self.assertEqual(post.call_args.kwargs['headers']['Authorization'], 'test-token')
         worker.assert_called()
         snapshot = ReportSnapshot.objects.first()
-        self.assertRedirects(page, f'/?snapshot={snapshot.pk}')
-        self.client.get(f'/?snapshot={snapshot.pk}')
+        self.assertEqual(page.redirect_chain, [('/', 302)])
+        self.assertIsNone(self.client.get('/').context['snapshot'])
         self.assertEqual(post.call_count, 1)
         self.assertIsNone(self.client.get('/').context['snapshot'])
 

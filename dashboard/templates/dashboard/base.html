@@ -12,8 +12,8 @@
       if (localStorage.getItem('finstat-sidebar') === 'collapsed' || (!localStorage.getItem('finstat-sidebar') && matchMedia('(max-width: 700px)').matches)) document.documentElement.classList.add('sidebar-collapsed');
     } catch (error) { /* Storage may be unavailable; use defaults. */ }
   </script>
-  <link rel="stylesheet" href="{% static 'dashboard/app.css' %}">
-  <script src="{% static 'dashboard/app.js' %}" defer></script>
+  <link rel="stylesheet" href="{% static 'dashboard/app.css' %}?v=20261109-2">
+  <script src="{% static 'dashboard/app.js' %}?v=20261109-2" defer></script>
 </head>
 <body>
   <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
