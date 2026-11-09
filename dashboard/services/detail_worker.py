@@ -17,11 +17,18 @@ _active = set()
 _lock = threading.Lock()
 
 
-def _amount(value):
+def _parse_amount(value):
+    if value is None or isinstance(value, bool):
+        return None
     try:
-        return Decimal(str(value or '0'))
+        amount = Decimal(str(value))
+        return amount if amount.is_finite() else None
     except (InvalidOperation, TypeError, ValueError):
-        return Decimal('0')
+        return None
+
+
+def _amount(value):
+    return _parse_amount(value) or Decimal('0')
 
 
 def prepare_details(snapshot):
@@ -29,21 +36,19 @@ def prepare_details(snapshot):
     pending = False
     for report in snapshot.reports:
         report_id = str(report['reportId'])
-        expected = _amount(report.get('deductionSum'))
+        expected = _parse_amount(report.get('deductionSum'))
         detail, _ = ReportDetail.objects.get_or_create(report_id=report_id)
-        if not expected:
+        if expected == Decimal('0'):
             # No detailed API call is needed for an explicitly zero total.
-            if report.get('deductionSum') is not None and (
-                not detail.complete or detail.entries
-            ):
+            if not detail.complete or detail.entries or detail.source != 'summary':
                 detail.entries = []
                 detail.cursor = 0
                 detail.complete = True
-                detail.source = 'report'
+                detail.source = 'summary'
                 detail.save(update_fields=['entries', 'cursor', 'complete', 'source', 'updated_at'])
         elif detail.source != 'report':
             cached_total = sum((_amount(entry.get('amount')) for entry in detail.entries), Decimal('0'))
-            if not detail.complete or cached_total != expected:
+            if not detail.complete or expected is None or cached_total != expected:
                 detail.entries = []
                 detail.cursor = 0
                 detail.complete = False
@@ -72,7 +77,10 @@ def _run(snapshot_id):
     try:
         snapshot = ReportSnapshot.objects.get(pk=snapshot_id)
         prepare_details(snapshot)
-        report_ids = [str(report['reportId']) for report in snapshot.reports]
+        report_ids = [
+            str(report['reportId']) for report in snapshot.reports
+            if _parse_amount(report.get('deductionSum')) != Decimal('0')
+        ]
         while True:
             snapshot.refresh_from_db()
             if snapshot.detail_complete or snapshot.detail_error:

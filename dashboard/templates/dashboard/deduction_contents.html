@@ -1,4 +1,7 @@
                 <strong>Состав удержаний/выплат</strong>
+                {% if row.detail_not_required %}
+                  <p>Удержания и выплаты — 0. По итогу отчёта детализация не требуется и не запрашивается.</p>
+                {% else %}
                 {% if row.detail_rows %}
                   <ul>{% for entry in row.detail_rows %}<li><span>{{ entry.reason }}</span><b>{{ entry.formatted_amount }}</b></li>{% endfor %}</ul>
                 {% endif %}
@@ -7,4 +10,5 @@
                   {% if row.detail_matches is False %}<p>Сумма строк отличается от итога отчёта. Требуется сверка.</p>{% endif %}
                 {% else %}
                   <p>Детализация ещё загружается. Суммы появятся после завершения.</p>
+                {% endif %}
                 {% endif %}

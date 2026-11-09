@@ -109,6 +109,7 @@ def report_context(snapshot):
             'total_to_pay': money(report.get('bankPaymentSum')),
             'detail_rows': detail_rows if detail and detail.complete else [],
             'detail_complete': bool(detail and detail.complete),
+            'detail_not_required': bool(detail and detail.source == 'summary'),
             'detail_matches': (
                 detail_sum == Decimal(str(expected))
             ) if detail and detail.complete and expected is not None else None,

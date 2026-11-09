@@ -191,6 +191,58 @@ class WildberriesReportTests(TestCase):
         self.assertNotContains(page, 'Все поля')
         self.assertNotContains(page, 'Продолжить загрузку')
 
+    @patch('dashboard.services.detail_worker.close_old_connections')
+    @patch('dashboard.services.detail_worker.time.sleep')
+    @patch('dashboard.services.detail_worker.fetch_deduction_page')
+    def test_zero_reports_make_no_detail_requests_or_waits(self, fetch, sleep, _close):
+        snapshot = ReportSnapshot.objects.create(
+            date_from=date(2026, 10, 1), date_to=date(2026, 10, 31), period='weekly',
+            reports=[{'reportId': index, 'deductionSum': value} for index, value in enumerate(
+                [0, '0', '0.00', '-0.000'], start=1,
+            )],
+        )
+        _run(snapshot.pk)
+        snapshot.refresh_from_db()
+        self.assertTrue(snapshot.detail_complete)
+        self.assertEqual(ReportDetail.objects.filter(complete=True, source='summary').count(), 4)
+        fetch.assert_not_called()
+        sleep.assert_not_called()
+        page = self.open_result(snapshot)
+        self.assertContains(page, 'детализация не требуется и не запрашивается', count=4)
+        self.assertNotContains(page, 'Удержаний и выплат в детализации не найдено')
+
+    @patch('dashboard.services.detail_worker.close_old_connections')
+    @patch('dashboard.services.detail_worker.time.sleep')
+    @patch('dashboard.services.detail_worker.fetch_deduction_page')
+    def test_mixed_reports_only_fetch_nonzero_report(self, fetch, sleep, _close):
+        snapshot = ReportSnapshot.objects.create(
+            date_from=date(2026, 10, 1), date_to=date(2026, 10, 31), period='weekly',
+            reports=[{'reportId': 1, 'deductionSum': '0'},
+                     {'reportId': 2, 'deductionSum': '5'},
+                     {'reportId': 3, 'deductionSum': '0.00'}],
+        )
+        fetch.side_effect = [[{'reportId': 2, 'rrdId': 42, 'deduction': '5'}], None]
+        _run(snapshot.pk)
+        self.assertEqual([call.args for call in fetch.call_args_list], [('2', 0), ('2', 42)])
+        # One mandatory pause between a page and its end-of-data confirmation.
+        sleep.assert_called_once_with(65)
+        snapshot.refresh_from_db()
+        self.assertTrue(snapshot.detail_complete)
+
+    @patch('dashboard.services.detail_worker.close_old_connections')
+    @patch('dashboard.services.detail_worker.time.sleep')
+    @patch('dashboard.services.detail_worker.fetch_deduction_page', return_value=None)
+    def test_unknown_totals_are_not_treated_as_zero(self, fetch, _sleep, _close):
+        snapshot = ReportSnapshot.objects.create(
+            date_from=date(2026, 10, 1), date_to=date(2026, 10, 31), period='weekly',
+            reports=[{'reportId': index, 'deductionSum': value} for index, value in enumerate(
+                [None, '', 'unknown', 'NaN'], start=1,
+            )],
+        )
+        _run(snapshot.pk)
+        self.assertEqual({call.args[0] for call in fetch.call_args_list}, {'1', '2', '3', '4'})
+        self.assertFalse(ReportDetail.objects.filter(source='summary').exists())
+
     @patch('dashboard.views.start_detail_worker')
     def test_old_empty_detail_is_repaired_without_reloading_list(self, worker):
         snapshot = ReportSnapshot.objects.create(
