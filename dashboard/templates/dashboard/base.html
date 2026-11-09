@@ -12,8 +12,8 @@
       if (localStorage.getItem('finstat-sidebar') === 'collapsed' || (!localStorage.getItem('finstat-sidebar') && matchMedia('(max-width: 700px)').matches)) document.documentElement.classList.add('sidebar-collapsed');
     } catch (error) { /* Storage may be unavailable; use defaults. */ }
   </script>
-  <link rel="stylesheet" href="{% static 'dashboard/app.css' %}?v=20261109-7">
-  <script src="{% static 'dashboard/app.js' %}?v=20261109-7" defer></script>
+  <link rel="stylesheet" href="{% static 'dashboard/app.css' %}?v=20261109-8">
+  <script src="{% static 'dashboard/app.js' %}?v=20261109-8" defer></script>
   {% block page_scripts %}{% endblock %}
 </head>
 <body>

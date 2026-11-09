@@ -33,14 +33,21 @@
           <span class="period-tag">По неделям</span>
         </button>
         <div class="period-calendar" id="period-calendar" role="dialog" aria-labelledby="calendar-title" hidden>
-          <div class="calendar-heading"><div><span class="calendar-eyebrow">ПЕРИОД ОТЧЁТОВ</span><h3 id="calendar-title">Выберите недели</h3></div><button type="button" class="calendar-close" aria-label="Закрыть календарь">×</button></div>
-          <p class="calendar-hint">Один клик — одна неделя. Второй — конец диапазона.</p>
-          <div class="calendar-shortcuts"><button type="button" data-calendar-shortcut="last-week">Последняя неделя</button><button type="button" data-calendar-shortcut="last-month">Прошлый месяц</button></div>
-          <div class="calendar-navigation"><button type="button" data-calendar-prev aria-label="Предыдущий месяц">‹</button><strong data-calendar-month aria-live="polite"></strong><button type="button" data-calendar-next aria-label="Следующий месяц">›</button></div>
+          <div class="calendar-heading"><div><span class="calendar-eyebrow">ПЕРИОД ОТЧЁТОВ</span><h3 id="calendar-title">Выберите недели</h3></div><button type="button" class="calendar-close" aria-label="Закрыть календарь"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"/></svg></button></div>
+          <div class="calendar-navigation">
+            <div class="calendar-nav-group">
+              <button type="button" data-calendar-prev-year aria-label="Предыдущий год" title="Предыдущий год"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m11 7-5 5 5 5m7-10-5 5 5 5"/></svg></button>
+              <button type="button" data-calendar-prev aria-label="Предыдущий месяц" title="Предыдущий месяц"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7-5 5 5 5"/></svg></button>
+            </div>
+            <strong data-calendar-month aria-live="polite"></strong>
+            <div class="calendar-nav-group">
+              <button type="button" data-calendar-next aria-label="Следующий месяц" title="Следующий месяц"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 7 5 5-5 5"/></svg></button>
+              <button type="button" data-calendar-next-year aria-label="Следующий год" title="Следующий год"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 7 5 5-5 5m7-10 5 5-5 5"/></svg></button>
+            </div>
+          </div>
           <div class="calendar-weekdays" aria-hidden="true"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
           <div class="calendar-weeks" data-calendar-weeks></div>
-          <p class="calendar-boundary-note">Короткая строка на краю месяца — отдельный отчёт.</p>
-          <div class="calendar-selection" data-calendar-selection aria-live="polite">Выберите одну или несколько недель</div>
+          <div class="calendar-selection" data-calendar-selection aria-live="polite"></div>
           <div class="calendar-actions"><button type="button" class="calendar-reset">Сбросить</button><button type="button" class="primary-button" data-calendar-apply disabled>Выбрать период</button></div>
         </div>
       </div>

@@ -29,6 +29,8 @@
   const apply = field.querySelector('[data-calendar-apply]');
   const previous = field.querySelector('[data-calendar-prev]');
   const next = field.querySelector('[data-calendar-next]');
+  const previousYear = field.querySelector('[data-calendar-prev-year]');
+  const nextYear = field.querySelector('[data-calendar-next-year]');
   let month = monthStart(parse(endInput.value) || today);
   let draftStart = null;
   let draftEnd = null;
@@ -67,6 +69,8 @@
     });
     previous.disabled = month <= monthStart(minimum);
     next.disabled = month >= monthStart(today);
+    previousYear.disabled = month.getUTCFullYear() <= minimum.getUTCFullYear();
+    nextYear.disabled = month.getUTCFullYear() >= today.getUTCFullYear();
     weeks.replaceChildren();
     let cursor = month;
     while (cursor <= monthEnd(month)) {
@@ -111,7 +115,7 @@
     }
     selection.textContent = draftStart && draftEnd
       ? `${format(draftStart)} — ${format(draftEnd)}`
-      : 'Выберите одну или несколько недель';
+      : '';
     if (draftStart && draftEnd - draftStart > 365 * dayMs) {
       selection.textContent = 'Выберите период не длиннее 365 дней';
     }
@@ -140,30 +144,15 @@
     trigger.setAttribute('aria-expanded', 'true');
     panel.querySelector('.calendar-close').focus({ preventScroll: true });
   });
-  previous.addEventListener('click', () => {
-    month = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() - 1, 1));
+  function changeMonth(offset) {
+    const target = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + offset, 1));
+    month = new Date(Math.max(monthStart(minimum), Math.min(target, monthStart(today))));
     render();
-  });
-  next.addEventListener('click', () => {
-    month = new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + 1, 1));
-    render();
-  });
-  field.querySelectorAll('[data-calendar-shortcut]').forEach(button => {
-    button.addEventListener('click', () => {
-      if (button.dataset.calendarShortcut === 'last-month') {
-        draftEnd = addDays(monthStart(today), -1);
-        draftStart = monthStart(draftEnd);
-      } else {
-        let part = segment(today);
-        if (part.end > today) part = segment(addDays(part.start, -1));
-        draftStart = part.start;
-        draftEnd = part.end;
-      }
-      anchor = null;
-      month = monthStart(draftEnd);
-      render();
-    });
-  });
+  }
+  previous.addEventListener('click', () => changeMonth(-1));
+  next.addEventListener('click', () => changeMonth(1));
+  previousYear.addEventListener('click', () => changeMonth(-12));
+  nextYear.addEventListener('click', () => changeMonth(12));
   apply.addEventListener('click', () => {
     if (!validRange()) return;
     startInput.value = iso(draftStart);

@@ -829,19 +829,16 @@ button:focus-visible, a:focus-visible {
 .calendar-heading, .calendar-navigation, .calendar-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .calendar-eyebrow { color: var(--accent); font-size: 9px; font-weight: 800; letter-spacing: 1.5px; }
 .calendar-heading h3 { margin: 6px 0 0; font-size: 18px; }
-.calendar-close { border: 0; background: var(--surface-soft); color: var(--muted); border-radius: 8px; width: 30px; height: 30px; font-size: 22px; }
-.calendar-hint, .calendar-boundary-note { color: var(--muted); font-size: 11px; line-height: 1.6; }
-.calendar-hint { margin: 10px 0 14px; }
-.calendar-shortcuts { display: flex; gap: 8px; margin-bottom: 18px; }
-.calendar-shortcuts button { border: 1px solid var(--line); border-radius: 7px; padding: 7px 9px; background: var(--surface-soft); color: var(--text); font-size: 11px; }
-.calendar-shortcuts button:hover { border-color: var(--accent); color: var(--accent); }
-.calendar-navigation { margin-bottom: 14px; }
-.calendar-navigation strong { font-size: 14px; text-transform: capitalize; }
-.calendar-navigation button { width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); font-size: 23px; line-height: 1; }
+.calendar-close { display: grid; place-items: center; flex: none; padding: 0; border: 0; background: var(--surface-soft); color: var(--muted); border-radius: 8px; width: 30px; height: 30px; }
+.calendar-close svg, .calendar-navigation svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.calendar-navigation { margin: 20px 0 14px; gap: 8px; }
+.calendar-nav-group { display: flex; gap: 5px; flex: none; }
+.calendar-navigation strong { flex: 1; text-align: center; font-size: 13px; text-transform: capitalize; white-space: nowrap; }
+.calendar-navigation button { display: grid; place-items: center; padding: 0; width: 28px; height: 30px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--text); }
 .calendar-navigation button:disabled { opacity: .25; cursor: default; }
 .calendar-weekdays, .calendar-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0; }
 .calendar-weekdays { margin-bottom: 6px; text-align: center; font-size: 10px; color: var(--muted); }
-.calendar-weeks { display: grid; gap: 5px; }
+.calendar-weeks { display: grid; grid-template-rows: repeat(6, 36px); gap: 5px; }
 .calendar-week { width: 100%; padding: 0; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--text); font-size: 12px; }
 .calendar-week span { display: grid; place-items: center; height: 34px; }
 .calendar-week span:not(:empty) { background: var(--surface-soft); }
@@ -853,8 +850,7 @@ button:focus-visible, a:focus-visible {
 .calendar-week.is-selected span:not(:empty) { background: var(--accent); color: var(--surface); font-weight: 750; }
 .calendar-week:disabled { opacity: .28; cursor: default; }
 .calendar-week .is-today { text-decoration: underline; text-underline-offset: 4px; }
-.calendar-boundary-note { margin: 12px 0; }
-.calendar-selection { padding: 12px 8px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); font-size: 12px; font-weight: 700; text-align: center; }
+.calendar-selection { height: 18px; margin-top: 12px; color: var(--accent); font-size: 11px; line-height: 18px; font-weight: 700; text-align: center; white-space: nowrap; }
 .calendar-actions { margin-top: 14px; }
 .calendar-reset { padding: 8px 0; border: 0; background: none; color: var(--muted); font-size: 12px; }
 .calendar-actions .primary-button { min-height: 38px; font-size: 12px; }
@@ -1186,10 +1182,10 @@ td {
 }
 .home-cursor-glow {
   position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0;
-  background: radial-gradient(360px circle at var(--cursor-x, 50%) var(--cursor-y, 30%), rgba(124, 101, 223, .11), transparent 75%);
+  background: radial-gradient(180px circle at var(--cursor-x, 50%) var(--cursor-y, 30%), rgba(124, 101, 223, .11), transparent 75%);
 }
 :root[data-theme="dark"] .home-cursor-glow {
-  background: radial-gradient(400px circle at var(--cursor-x, 50%) var(--cursor-y, 30%), rgba(164, 148, 255, .12), transparent 75%);
+  background: radial-gradient(200px circle at var(--cursor-x, 50%) var(--cursor-y, 30%), rgba(164, 148, 255, .12), transparent 75%);
 }
 .workspace-home.has-cursor .home-cursor-glow { opacity: 1; }
 .home-shell { position: relative; max-width: 1240px; margin: 0 auto; }
