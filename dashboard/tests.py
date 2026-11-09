@@ -17,12 +17,13 @@ from dashboard.services.wildberries import (
 class WorkspaceNavigationTests(TestCase):
     @patch('dashboard.views.start_detail_worker')
     @patch('dashboard.views.fetch_report_list')
-    def test_home_shows_animation_without_starting_report_requests(self, fetch, worker):
+    def test_home_shows_cursor_glow_without_starting_report_requests(self, fetch, worker):
         session = self.client.session
         session['report_result_id'] = 123
         session.save()
         page = self.client.get('/')
-        self.assertContains(page, 'data-landscape-canvas')
+        self.assertContains(page, 'data-cursor-glow')
+        self.assertNotContains(page, '<canvas')
         self.assertContains(page, 'workspace-home')
         self.assertNotContains(page, 'kinetic-stage')
         self.assertContains(page, 'home.js')

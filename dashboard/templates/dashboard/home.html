@@ -1,19 +1,15 @@
 {% extends 'dashboard/base.html' %}
 {% load static %}
 {% block title %}Главная · FinStat{% endblock %}
-{% block page_scripts %}<script src="{% static 'dashboard/home.js' %}?v=20261109-2" defer></script>{% endblock %}
+{% block page_scripts %}<script src="{% static 'dashboard/home.js' %}?v=20261109-3" defer></script>{% endblock %}
 {% block page_class %}workspace-home{% endblock %}
 {% block content %}
-  <div class="landscape-background" aria-hidden="true"><canvas data-landscape-canvas></canvas></div>
-  <div class="home-shell" data-landscape-content>
+  <div class="home-cursor-glow" data-cursor-glow aria-hidden="true"></div>
+  <div class="home-shell">
   <div class="page-heading home-heading">
     <div><div class="eyebrow"><span class="eyebrow-dot"></span> ТВОЁ РАБОЧЕЕ ПРОСТРАНСТВО</div><h1>Привет, Александр.</h1><p>Всё начинается с ясной картины.</p></div>
     <span class="home-edition">FINSTAT <span>01 / WORKSPACE</span></span>
   </div>
-  <section class="landscape-space" aria-label="Интерактивный световой рельеф: движение курсора меняет поверхность, нажатие запускает волну">
-    <div class="landscape-caption"><span class="landscape-indicator"><i></i> ЖИВОЕ ПРОСТРАНСТВО</span><p>Двигай курсор. Меняй рельеф.<br><span>Нажми, чтобы запустить волну.</span></p></div>
-    <button type="button" class="landscape-impulse">Новая волна <span aria-hidden="true">↗</span></button>
-  </section>
   <div class="home-section-label"><span>ВЫБЕРИ НАПРАВЛЕНИЕ</span><span>ДВА ВЗГЛЯДА НА БИЗНЕС</span></div>
   <div class="workspace-links">
     <a class="workspace-link" href="{% url 'financial_reports' %}">

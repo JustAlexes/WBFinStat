@@ -1178,39 +1178,24 @@ td {
 }
 
 
-/* The entire home workspace is one interactive landscape. */
+/* Simple cursor light across the home workspace. */
 .page-content.workspace-home {
   position: relative; isolation: isolate; max-width: none; margin: 0;
   min-height: calc(100svh - 72px); padding: 44px clamp(24px, 5vw, 86px) 30px;
-  background: radial-gradient(ellipse at 55% 45%, #eeeafa 0%, #f6f8fc 72%);
+  background: var(--bg);
 }
-:root[data-theme="dark"] .workspace-home { background: radial-gradient(ellipse at 55% 48%, #181a37 0%, #101522 70%); }
-.landscape-background { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
-.landscape-background canvas { display: block; width: 100%; height: 100%; }
-.landscape-background::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, var(--bg) 0%, transparent 25%, transparent 65%, var(--bg) 100%); opacity: .8; }
-.home-shell { display: flex; flex-direction: column; position: relative; min-height: calc(100svh - 146px); max-width: 1240px; margin: 0 auto; pointer-events: none; }
+.home-cursor-glow {
+  position: absolute; inset: 0; z-index: -1; pointer-events: none; opacity: 0;
+  background: radial-gradient(360px circle at var(--cursor-x, 50%) var(--cursor-y, 30%), rgba(124, 101, 223, .11), transparent 75%);
+}
+:root[data-theme="dark"] .home-cursor-glow {
+  background: radial-gradient(400px circle at var(--cursor-x, 50%) var(--cursor-y, 30%), rgba(164, 148, 255, .12), transparent 75%);
+}
+.workspace-home.has-cursor .home-cursor-glow { opacity: 1; }
+.home-shell { position: relative; max-width: 1240px; margin: 0 auto; }
 .home-shell .home-heading { margin-bottom: 0; }
-.landscape-space { position: relative; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex: 1; min-height: 340px; padding-bottom: 10px; }
-.landscape-indicator { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: 1.8px; }
-.landscape-indicator i { width: 5px; height: 5px; border-radius: 50%; background: #36bfb7; box-shadow: 0 0 16px #36bfb7; }
-.landscape-caption p { color: var(--text); font-size: 12px; line-height: 1.8; margin: 12px 0 0; }
-.landscape-caption p span { font-size: 11px; color: var(--muted); }
-.landscape-impulse { pointer-events: auto; padding: 12px 17px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-soft); color: var(--accent); font-size: 12px; backdrop-filter: blur(10px); }
-.landscape-impulse span { padding-left: 14px; }
-.landscape-impulse:hover { border-color: var(--accent); }
-.landscape-impulse:disabled { opacity: .4; cursor: default; }
-.home-shell .workspace-link { pointer-events: auto; background: color-mix(in srgb, var(--surface) 82%, transparent); backdrop-filter: blur(16px); }
-.home-shell .workspace-link:hover { background: var(--surface); }
-.home-shell .home-section-label { margin-top: 24px; }
-@media (min-width: 1600px) { .landscape-space { min-height: 400px; } }
+.home-shell .home-section-label { margin-top: 32px; }
 @media (max-width: 700px) {
   .page-content.workspace-home { padding: 30px 22px 26px; }
-  .home-shell { min-height: calc(100svh - 128px); }
-  .landscape-space { min-height: 310px; padding-bottom: 0; }
-  .landscape-caption p { font-size: 11px; }
-  .landscape-caption p span { font-size: 10px; }
-  .landscape-indicator { font-size: 8px; letter-spacing: 1px; }
-  .landscape-impulse { padding: 10px 12px; font-size: 10px; }
-  .landscape-impulse span { padding-left: 7px; }
   .home-section-label > span:last-child { display: none; }
 }
