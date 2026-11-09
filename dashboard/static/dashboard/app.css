@@ -880,6 +880,7 @@ button:focus-visible, a:focus-visible {
   opacity: .5;
   cursor: not-allowed;
 }
+.refresh-reports { background: var(--surface-soft); color: var(--accent); border: 1px solid var(--line); }
 .alert {
   margin-top: 18px;
   border-radius: 10px;

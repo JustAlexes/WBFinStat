@@ -243,6 +243,76 @@ class WildberriesReportTests(TestCase):
             fetch_report_list(date(2026, 10, 1), date(2026, 10, 2), 'daily')
         self.assertEqual(post.call_count, 1)
 
+    @patch('dashboard.views.get_token', return_value='')
+    @patch('dashboard.views.start_detail_worker')
+    @patch('dashboard.views.fetch_report_list')
+    def test_same_period_reuses_saved_reports_and_details_without_token(self, fetch, worker, _token):
+        snapshot = ReportSnapshot.objects.create(
+            date_from=date(2026, 10, 19), date_to=date(2026, 10, 25), period='weekly',
+            reports=[{'reportId': 835092276, 'deductionSum': '154330'}], detail_complete=True,
+        )
+        ReportDetail.objects.create(
+            report_id='835092276', source='report', complete=True,
+            entries=[{'reason': 'Продвижение', 'amount': '154330'}],
+        )
+        for _ in range(2):
+            page = self.client.post('/', {
+                'date_from': '2026-10-19', 'date_to': '2026-10-25',
+            }, follow=True)
+            self.assertEqual(page.context['snapshot'].pk, snapshot.pk)
+            self.assertContains(page, 'Показаны сохранённые отчёты: 1.')
+            self.assertContains(page, '154 330.00')
+        self.assertEqual(ReportSnapshot.objects.count(), 1)
+        fetch.assert_not_called()
+        worker.assert_not_called()
+        self.assertIsNone(self.client.get('/').context['snapshot'])
+
+    @patch('dashboard.views.start_detail_worker')
+    @patch('dashboard.views.fetch_report_list')
+    def test_cached_list_resumes_failed_detail_from_saved_cursor(self, fetch, worker):
+        snapshot = ReportSnapshot.objects.create(
+            date_from=date(2026, 10, 19), date_to=date(2026, 10, 25), period='weekly',
+            reports=[{'reportId': 835092276, 'deductionSum': '154330'}], detail_error='Сбой сети',
+        )
+        ReportDetail.objects.create(
+            report_id='835092276', source='report', cursor=42,
+            entries=[{'reason': 'Продвижение', 'amount': '100000'}],
+        )
+        self.client.post('/', {'date_from': '2026-10-19', 'date_to': '2026-10-25'}, follow=True)
+        snapshot.refresh_from_db()
+        self.assertEqual(snapshot.detail_error, '')
+        detail = ReportDetail.objects.get(report_id='835092276')
+        self.assertEqual(detail.cursor, 42)
+        self.assertEqual(len(detail.entries), 1)
+        fetch.assert_not_called()
+        worker.assert_called_with(snapshot.pk)
+
+    @patch('dashboard.views.start_detail_worker')
+    @patch('dashboard.views.fetch_report_list', return_value=[{'reportId': 200, 'deductionSum': '0'}])
+    def test_explicit_refresh_bypasses_saved_period(self, fetch, _worker):
+        ReportSnapshot.objects.create(
+            date_from=date(2026, 10, 19), date_to=date(2026, 10, 25), period='weekly',
+            reports=[{'reportId': 100, 'deductionSum': '0'}],
+        )
+        page = self.client.post('/', {
+            'date_from': '2026-10-19', 'date_to': '2026-10-25', 'refresh': '1',
+        }, follow=True)
+        self.assertEqual(page.context['snapshot'].reports[0]['reportId'], 200)
+        self.assertEqual(ReportSnapshot.objects.count(), 2)
+        fetch.assert_called_once_with(date(2026, 10, 19), date(2026, 10, 25), 'weekly')
+
+    @patch('dashboard.views.start_detail_worker')
+    @patch('dashboard.views.fetch_report_list', return_value=[{'reportId': 200, 'deductionSum': '0'}])
+    def test_empty_saved_response_does_not_hide_later_reports(self, fetch, _worker):
+        ReportSnapshot.objects.create(
+            date_from=date(2026, 10, 19), date_to=date(2026, 10, 25), period='weekly', reports=[],
+        )
+        page = self.client.post('/', {
+            'date_from': '2026-10-19', 'date_to': '2026-10-25',
+        }, follow=True)
+        self.assertEqual(page.context['snapshot'].reports[0]['reportId'], 200)
+        fetch.assert_called_once()
+
     @patch('dashboard.views.start_detail_worker')
     @patch('dashboard.services.wildberries.get_token', return_value='test-token')
     @patch('dashboard.services.wildberries.requests.post')

@@ -147,19 +147,28 @@ def home(request):
     if request.method == 'POST' and form.is_valid():
         try:
             data = form.cleaned_data
-            reports = fetch_report_list(
-                data['date_from'], data['date_to'], 'weekly'
-            )
-            snapshot = ReportSnapshot.objects.create(
-                date_from=data['date_from'],
-                date_to=data['date_to'],
-                period='weekly',
-                reports=reports,
-            )
+            if request.POST.get('refresh') != '1':
+                snapshot = ReportSnapshot.objects.filter(
+                    date_from=data['date_from'], date_to=data['date_to'], period='weekly',
+                ).exclude(reports=[]).first()
+            from_cache = snapshot is not None
+            if snapshot is None:
+                reports = fetch_report_list(data['date_from'], data['date_to'], 'weekly')
+                snapshot = ReportSnapshot.objects.create(
+                    date_from=data['date_from'], date_to=data['date_to'],
+                    period='weekly', reports=reports,
+                )
+            elif snapshot.detail_error:
+                # An explicit request retries unfinished details from the saved cursor.
+                snapshot.detail_error = ''
+                snapshot.save(update_fields=['detail_error'])
             complete = prepare_details(snapshot)
             if not complete:
                 start_detail_worker(snapshot.pk)
-            message = f'Загружено отчётов: {len(reports)}.'
+            message = (
+                f'Показаны сохранённые отчёты: {len(snapshot.reports)}.' if from_cache
+                else f'Загружено отчётов: {len(snapshot.reports)}.'
+            )
             if not complete:
                 message += ' Детализация подгружается автоматически.'
             messages.success(request, message)

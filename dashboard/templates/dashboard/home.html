@@ -19,7 +19,7 @@
       </span>
     </div>
     {% if not token_configured %}
-      <p class="notice">Для загрузки создайте в корне проекта файл <code>.env</code> и добавьте строку <code>КОСТРИК=ваш_токен</code>. Нужен персональный или сервисный токен с категорией «Финансы».</p>
+      <p class="notice">Сохранённые отчёты можно открыть без токена. Для запросов к WB создайте в корне проекта файл <code>.env</code> и добавьте строку <code>КОСТРИК=ваш_токен</code>. Нужен персональный или сервисный токен с категорией «Финансы».</p>
     {% endif %}
     <form method="post" class="import-form">
       {% csrf_token %}
@@ -43,7 +43,8 @@
           <div class="calendar-actions"><button type="button" class="calendar-reset">Сбросить</button><button type="button" class="primary-button" data-calendar-apply disabled>Выбрать период</button></div>
         </div>
       </div>
-      <button type="submit" class="primary-button" {% if not token_configured %}disabled{% endif %}>Загрузить отчёты</button>
+      <button type="submit" class="primary-button">Загрузить отчёты</button>
+      <button type="submit" name="refresh" value="1" class="primary-button refresh-reports" {% if not token_configured %}disabled{% endif %}>Обновить из WB</button>
     </form>
     {% if form.errors %}<div class="alert error" role="alert">Проверьте период: {{ form.non_field_errors }}{% for field in form %}{{ field.errors }}{% endfor %}</div>{% endif %}
     {% if error %}<div class="alert error" role="alert">{{ error }}</div>{% endif %}
