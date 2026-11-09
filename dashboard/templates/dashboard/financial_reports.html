@@ -1,0 +1,56 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Финансовые отчёты · FinStat{% endblock %}
+{% block breadcrumb %}Финансовые отчёты{% endblock %}
+{% block content %}
+  <div class="page-heading">
+    <div class="eyebrow"><span class="eyebrow-dot"></span> FINSTAT / WILDBERRIES</div>
+    <h1>Финансовые отчёты</h1>
+    <p>Финансовые отчёты реализации Wildberries в одном месте.</p>
+  </div>
+
+  <section class="surface-card import-card" aria-labelledby="import-title">
+    <div class="import-intro">
+      <div>
+        <span class="feature-number">ИСТОЧНИК ДАННЫХ</span>
+        <h2 id="import-title">Отчёты реализации</h2>
+        <p>Выберите недели и загрузите отчёты. На границе месяца неделя делится на отдельные отчёты.</p>
+      </div>
+      <span class="connection-pill {% if token_configured %}connected{% endif %}">
+        <span></span>{% if token_configured %}Токен указан{% else %}Токен не указан{% endif %}
+      </span>
+    </div>
+    {% if not token_configured %}
+      <p class="notice">Сохранённые отчёты можно открыть без токена. Для запросов к WB создайте в корне проекта файл <code>.env</code> и добавьте строку <code>КОСТРИК=ваш_токен</code>. Нужен персональный или сервисный токен с категорией «Финансы».</p>
+    {% endif %}
+    <form method="post" class="import-form">
+      {% csrf_token %}
+      <div class="form-field period-field" data-report-calendar data-today="{{ calendar_today }}">
+        <label id="period-label" for="period-trigger">Период отчётов</label>
+        {{ form.date_from }}{{ form.date_to }}
+        <button type="button" class="period-trigger" id="period-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="period-calendar">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>
+          <span data-period-value>Выберите недели</span>
+          <span class="period-tag">По неделям</span>
+        </button>
+        <div class="period-calendar" id="period-calendar" role="dialog" aria-labelledby="calendar-title" hidden>
+          <div class="calendar-heading"><div><span class="calendar-eyebrow">ПЕРИОД ОТЧЁТОВ</span><h3 id="calendar-title">Выберите недели</h3></div><button type="button" class="calendar-close" aria-label="Закрыть календарь">×</button></div>
+          <p class="calendar-hint">Один клик — одна неделя. Второй — конец диапазона.</p>
+          <div class="calendar-shortcuts"><button type="button" data-calendar-shortcut="last-week">Последняя неделя</button><button type="button" data-calendar-shortcut="last-month">Прошлый месяц</button></div>
+          <div class="calendar-navigation"><button type="button" data-calendar-prev aria-label="Предыдущий месяц">‹</button><strong data-calendar-month aria-live="polite"></strong><button type="button" data-calendar-next aria-label="Следующий месяц">›</button></div>
+          <div class="calendar-weekdays" aria-hidden="true"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
+          <div class="calendar-weeks" data-calendar-weeks></div>
+          <p class="calendar-boundary-note">Короткая строка на краю месяца — отдельный отчёт.</p>
+          <div class="calendar-selection" data-calendar-selection aria-live="polite">Выберите одну или несколько недель</div>
+          <div class="calendar-actions"><button type="button" class="calendar-reset">Сбросить</button><button type="button" class="primary-button" data-calendar-apply disabled>Выбрать период</button></div>
+        </div>
+      </div>
+      <button type="submit" class="primary-button">Загрузить отчёты</button>
+      <button type="submit" name="refresh" value="1" class="primary-button refresh-reports" {% if not token_configured %}disabled{% endif %}>Обновить из WB</button>
+    </form>
+    {% if form.errors %}<div class="alert error" role="alert">Проверьте период: {{ form.non_field_errors }}{% for field in form %}{{ field.errors }}{% endfor %}</div>{% endif %}
+    {% if error %}<div class="alert error" role="alert">{{ error }}</div>{% endif %}
+    {% for message in messages %}<div class="alert {% if message.tags == 'error' %}error{% else %}success{% endif %}" role="status">{{ message }}</div>{% endfor %}
+  </section>
+
+  <div id="report-results">{% include 'dashboard/report_results.html' %}</div>
+{% endblock %}

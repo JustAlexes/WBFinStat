@@ -14,12 +14,45 @@ from dashboard.services.wildberries import (
 )
 
 
+class WorkspaceNavigationTests(TestCase):
+    @patch('dashboard.views.start_detail_worker')
+    @patch('dashboard.views.fetch_report_list')
+    def test_home_shows_animation_without_starting_report_requests(self, fetch, worker):
+        session = self.client.session
+        session['report_result_id'] = 123
+        session.save()
+        page = self.client.get('/')
+        self.assertContains(page, 'data-kinetic-stage')
+        self.assertContains(page, 'home.js')
+        self.assertNotContains(page, 'data-report-calendar')
+        self.assertEqual(self.client.session['report_result_id'], 123)
+        fetch.assert_not_called()
+        worker.assert_not_called()
+
+    def test_three_sections_have_distinct_pages_and_active_navigation(self):
+        for path, title in [('/', 'Главная'), ('/reports/', 'Финансовые отчёты'),
+                            ('/assortment/', 'Ассортимент')]:
+            with self.subTest(path=path):
+                page = self.client.get(path)
+                self.assertContains(page, f'<title>{title} · FinStat</title>')
+                self.assertContains(page, 'aria-current="page"', count=1)
+                for link in ['href="/"', 'href="/reports/"', 'href="/assortment/"']:
+                    self.assertContains(page, link)
+
+    @patch('dashboard.views.start_detail_worker')
+    def test_assortment_explains_missing_product_data(self, worker):
+        page = self.client.get('/assortment/')
+        self.assertContains(page, 'Нет товарных данных')
+        self.assertNotContains(page, 'data-report-calendar')
+        worker.assert_not_called()
+
+
 class WildberriesReportTests(TestCase):
     def open_result(self, snapshot):
         session = self.client.session
         session['report_result_id'] = snapshot.pk
         session.save()
-        return self.client.get('/')
+        return self.client.get('/reports/')
 
     @patch('dashboard.views.start_detail_worker')
     @patch('dashboard.views.fetch_report_list')
@@ -29,7 +62,7 @@ class WildberriesReportTests(TestCase):
             period='weekly', reports=[{'reportId': 835092276, 'deductionSum': '154330'}],
             detail_error='Не удалось загрузить детализацию Wildberries.',
         )
-        page = self.client.get('/')
+        page = self.client.get('/reports/')
         self.assertIsNone(page.context['snapshot'])
         self.assertEqual(page.context['report_rows'], [])
         self.assertContains(page, 'Выберите период отчётов')
@@ -46,7 +79,7 @@ class WildberriesReportTests(TestCase):
             date_from=date(2026, 10, 1), date_to=date(2026, 10, 31),
             period='weekly', reports=[{'reportId': 835092276, 'deductionSum': '154330'}],
         )
-        self.client.get('/')
+        self.client.get('/reports/')
         worker.assert_not_called()
         self.assertFalse(ReportDetail.objects.exists())
 
@@ -57,7 +90,7 @@ class WildberriesReportTests(TestCase):
             period='weekly', reports=[{'reportId': 835092276, 'deductionSum': '154330'}],
             detail_error='Не удалось загрузить детализацию Wildberries.',
         )
-        page = self.client.get(f'/?snapshot={snapshot.pk}')
+        page = self.client.get(f'/reports/?snapshot={snapshot.pk}')
         self.assertIsNone(page.context['snapshot'])
         self.assertNotContains(page, '835092276')
         self.assertNotContains(page, 'Не удалось загрузить детализацию')
@@ -74,8 +107,8 @@ class WildberriesReportTests(TestCase):
         status = self.client.get(f'/reports/status/{snapshot.pk}/').json()
         self.assertTrue(status['complete'])
         self.assertIn('835092276', status['html'])
-        self.assertIsNone(self.client.get('/').context['snapshot'])
-        self.assertIsNone(self.client.get(f'/?snapshot={snapshot.pk}').context['snapshot'])
+        self.assertIsNone(self.client.get('/reports/').context['snapshot'])
+        self.assertIsNone(self.client.get(f'/reports/?snapshot={snapshot.pk}').context['snapshot'])
         worker.assert_not_called()
 
     @patch('dashboard.views.start_detail_worker')
@@ -298,7 +331,7 @@ class WildberriesReportTests(TestCase):
         }]
         post.return_value = response
 
-        page = self.client.post('/', {
+        page = self.client.post('/reports/', {
             'date_from': '2026-10-01',
             'date_to': '2026-10-31',
             'period': 'daily',
@@ -313,10 +346,10 @@ class WildberriesReportTests(TestCase):
         self.assertEqual(post.call_args.kwargs['headers']['Authorization'], 'test-token')
         worker.assert_called()
         snapshot = ReportSnapshot.objects.first()
-        self.assertEqual(page.redirect_chain, [('/', 302)])
-        self.assertIsNone(self.client.get('/').context['snapshot'])
+        self.assertEqual(page.redirect_chain, [('/reports/', 302)])
+        self.assertIsNone(self.client.get('/reports/').context['snapshot'])
         self.assertEqual(post.call_count, 1)
-        self.assertIsNone(self.client.get('/').context['snapshot'])
+        self.assertIsNone(self.client.get('/reports/').context['snapshot'])
 
     @patch('dashboard.services.wildberries.get_token', return_value='test-token')
     @patch('dashboard.services.wildberries.requests.post')
@@ -340,7 +373,7 @@ class WildberriesReportTests(TestCase):
             entries=[{'reason': 'Продвижение', 'amount': '154330'}],
         )
         for _ in range(2):
-            page = self.client.post('/', {
+            page = self.client.post('/reports/', {
                 'date_from': '2026-10-19', 'date_to': '2026-10-25',
             }, follow=True)
             self.assertEqual(page.context['snapshot'].pk, snapshot.pk)
@@ -349,7 +382,7 @@ class WildberriesReportTests(TestCase):
         self.assertEqual(ReportSnapshot.objects.count(), 1)
         fetch.assert_not_called()
         worker.assert_not_called()
-        self.assertIsNone(self.client.get('/').context['snapshot'])
+        self.assertIsNone(self.client.get('/reports/').context['snapshot'])
 
     @patch('dashboard.views.start_detail_worker')
     @patch('dashboard.views.fetch_report_list')
@@ -362,7 +395,7 @@ class WildberriesReportTests(TestCase):
             report_id='835092276', source='report', cursor=42,
             entries=[{'reason': 'Продвижение', 'amount': '100000'}],
         )
-        self.client.post('/', {'date_from': '2026-10-19', 'date_to': '2026-10-25'}, follow=True)
+        self.client.post('/reports/', {'date_from': '2026-10-19', 'date_to': '2026-10-25'}, follow=True)
         snapshot.refresh_from_db()
         self.assertEqual(snapshot.detail_error, '')
         detail = ReportDetail.objects.get(report_id='835092276')
@@ -378,7 +411,7 @@ class WildberriesReportTests(TestCase):
             date_from=date(2026, 10, 19), date_to=date(2026, 10, 25), period='weekly',
             reports=[{'reportId': 100, 'deductionSum': '0'}],
         )
-        page = self.client.post('/', {
+        page = self.client.post('/reports/', {
             'date_from': '2026-10-19', 'date_to': '2026-10-25', 'refresh': '1',
         }, follow=True)
         self.assertEqual(page.context['snapshot'].reports[0]['reportId'], 200)
@@ -391,7 +424,7 @@ class WildberriesReportTests(TestCase):
         ReportSnapshot.objects.create(
             date_from=date(2026, 10, 19), date_to=date(2026, 10, 25), period='weekly', reports=[],
         )
-        page = self.client.post('/', {
+        page = self.client.post('/reports/', {
             'date_from': '2026-10-19', 'date_to': '2026-10-25',
         }, follow=True)
         self.assertEqual(page.context['snapshot'].reports[0]['reportId'], 200)
@@ -406,7 +439,7 @@ class WildberriesReportTests(TestCase):
             period='weekly', reports=[{'reportId': 100}],
         )
         post.return_value = Mock(status_code=403, ok=False)
-        page = self.client.post('/', {
+        page = self.client.post('/reports/', {
             'date_from': '2026-10-01',
             'date_to': '2026-10-31',
             'period': 'weekly',
@@ -462,6 +495,6 @@ class ReportPeriodFormTests(TestCase):
 
     @patch('dashboard.views.fetch_report_list')
     def test_invalid_week_does_not_call_wildberries(self, fetch):
-        response = self.client.post('/', {'date_from': '2026-10-27', 'date_to': '2026-10-31'})
+        response = self.client.post('/reports/', {'date_from': '2026-10-27', 'date_to': '2026-10-31'})
         self.assertContains(response, 'Период должен начинаться в понедельник')
         fetch.assert_not_called()

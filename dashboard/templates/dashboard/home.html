@@ -1,55 +1,29 @@
 {% extends 'dashboard/base.html' %}
+{% load static %}
 {% block title %}Главная · FinStat{% endblock %}
+{% block page_scripts %}<script src="{% static 'dashboard/home.js' %}?v=20261109-1" defer></script>{% endblock %}
 {% block content %}
-  <div class="page-heading">
-    <div class="eyebrow"><span class="eyebrow-dot"></span> FINSTAT / WILDBERRIES</div>
-    <h1>Главная</h1>
-    <p>Финансовые отчёты реализации Wildberries в одном месте.</p>
+  <div class="page-heading home-heading">
+    <div><div class="eyebrow"><span class="eyebrow-dot"></span> ТВОЁ РАБОЧЕЕ ПРОСТРАНСТВО</div><h1>Привет, Александр.</h1><p>Всё начинается с ясной картины.</p></div>
+    <span class="home-edition">FINSTAT <span>01 / WORKSPACE</span></span>
   </div>
-
-  <section class="surface-card import-card" aria-labelledby="import-title">
-    <div class="import-intro">
-      <div>
-        <span class="feature-number">ИСТОЧНИК ДАННЫХ</span>
-        <h2 id="import-title">Отчёты реализации</h2>
-        <p>Выберите недели и загрузите отчёты. На границе месяца неделя делится на отдельные отчёты.</p>
-      </div>
-      <span class="connection-pill {% if token_configured %}connected{% endif %}">
-        <span></span>{% if token_configured %}Токен указан{% else %}Токен не указан{% endif %}
-      </span>
-    </div>
-    {% if not token_configured %}
-      <p class="notice">Сохранённые отчёты можно открыть без токена. Для запросов к WB создайте в корне проекта файл <code>.env</code> и добавьте строку <code>КОСТРИК=ваш_токен</code>. Нужен персональный или сервисный токен с категорией «Финансы».</p>
-    {% endif %}
-    <form method="post" class="import-form">
-      {% csrf_token %}
-      <div class="form-field period-field" data-report-calendar data-today="{{ calendar_today }}">
-        <label id="period-label" for="period-trigger">Период отчётов</label>
-        {{ form.date_from }}{{ form.date_to }}
-        <button type="button" class="period-trigger" id="period-trigger" aria-haspopup="dialog" aria-expanded="false" aria-controls="period-calendar">
-          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M16 3v4M8 3v4M3 11h18"/></svg>
-          <span data-period-value>Выберите недели</span>
-          <span class="period-tag">По неделям</span>
-        </button>
-        <div class="period-calendar" id="period-calendar" role="dialog" aria-labelledby="calendar-title" hidden>
-          <div class="calendar-heading"><div><span class="calendar-eyebrow">ПЕРИОД ОТЧЁТОВ</span><h3 id="calendar-title">Выберите недели</h3></div><button type="button" class="calendar-close" aria-label="Закрыть календарь">×</button></div>
-          <p class="calendar-hint">Один клик — одна неделя. Второй — конец диапазона.</p>
-          <div class="calendar-shortcuts"><button type="button" data-calendar-shortcut="last-week">Последняя неделя</button><button type="button" data-calendar-shortcut="last-month">Прошлый месяц</button></div>
-          <div class="calendar-navigation"><button type="button" data-calendar-prev aria-label="Предыдущий месяц">‹</button><strong data-calendar-month aria-live="polite"></strong><button type="button" data-calendar-next aria-label="Следующий месяц">›</button></div>
-          <div class="calendar-weekdays" aria-hidden="true"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>
-          <div class="calendar-weeks" data-calendar-weeks></div>
-          <p class="calendar-boundary-note">Короткая строка на краю месяца — отдельный отчёт.</p>
-          <div class="calendar-selection" data-calendar-selection aria-live="polite">Выберите одну или несколько недель</div>
-          <div class="calendar-actions"><button type="button" class="calendar-reset">Сбросить</button><button type="button" class="primary-button" data-calendar-apply disabled>Выбрать период</button></div>
-        </div>
-      </div>
-      <button type="submit" class="primary-button">Загрузить отчёты</button>
-      <button type="submit" name="refresh" value="1" class="primary-button refresh-reports" {% if not token_configured %}disabled{% endif %}>Обновить из WB</button>
-    </form>
-    {% if form.errors %}<div class="alert error" role="alert">Проверьте период: {{ form.non_field_errors }}{% for field in form %}{{ field.errors }}{% endfor %}</div>{% endif %}
-    {% if error %}<div class="alert error" role="alert">{{ error }}</div>{% endif %}
-    {% for message in messages %}<div class="alert {% if message.tags == 'error' %}error{% else %}success{% endif %}" role="status">{{ message }}</div>{% endfor %}
+  <section class="kinetic-stage" aria-labelledby="kinetic-title" data-kinetic-stage>
+    <div class="kinetic-grid" aria-hidden="true"></div>
+    <div class="kinetic-topline"><span><i></i> ДАННЫЕ В ДВИЖЕНИИ</span><span>НАВЕДИ КУРСОР</span></div>
+    <h2 id="kinetic-title" class="kinetic-accessible">FinStat — финансы под твоим контролем</h2>
+    <div class="kinetic-fallback" aria-hidden="true">Fin<span>Stat</span></div>
+    <canvas class="kinetic-canvas" aria-hidden="true"></canvas>
+    <div class="kinetic-bottomline"><p>Разбросай цифры.<br><span>Они знают, куда вернуться.</span></p><button type="button" class="kinetic-impulse">Запустить импульс <span aria-hidden="true">↗</span></button></div>
   </section>
-
-  <div id="report-results">{% include 'dashboard/report_results.html' %}</div>
+  <div class="home-section-label"><span>ВЫБЕРИ НАПРАВЛЕНИЕ</span><span>ДВА ВЗГЛЯДА НА БИЗНЕС</span></div>
+  <div class="workspace-links">
+    <a class="workspace-link" href="{% url 'financial_reports' %}">
+      <span class="workspace-icon"><svg class="icon"><use href="#icon-report"></use></svg></span>
+      <span class="workspace-link-copy"><span class="workspace-index">01 / ФИНАНСЫ</span><h2>Финансовые отчёты</h2><p>Продажи, расходы и выплаты.<br>Вся неделя — в одной картине.</p></span><span class="workspace-arrow" aria-hidden="true">↗</span>
+    </a>
+    <a class="workspace-link" href="{% url 'assortment' %}">
+      <span class="workspace-icon"><svg class="icon"><use href="#icon-products"></use></svg></span>
+      <span class="workspace-link-copy"><span class="workspace-index">02 / ТОВАРЫ</span><h2>Ассортимент</h2><p>От общей суммы — к артикулу.<br>Место для товарной аналитики.</p></span><span class="workspace-arrow" aria-hidden="true">↗</span>
+    </a>
+  </div>
 {% endblock %}

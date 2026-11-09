@@ -12,12 +12,15 @@
       if (localStorage.getItem('finstat-sidebar') === 'collapsed' || (!localStorage.getItem('finstat-sidebar') && matchMedia('(max-width: 700px)').matches)) document.documentElement.classList.add('sidebar-collapsed');
     } catch (error) { /* Storage may be unavailable; use defaults. */ }
   </script>
-  <link rel="stylesheet" href="{% static 'dashboard/app.css' %}?v=20261109-4">
-  <script src="{% static 'dashboard/app.js' %}?v=20261109-4" defer></script>
+  <link rel="stylesheet" href="{% static 'dashboard/app.css' %}?v=20261109-5">
+  <script src="{% static 'dashboard/app.js' %}?v=20261109-5" defer></script>
+  {% block page_scripts %}{% endblock %}
 </head>
 <body>
   <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <symbol id="icon-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="icon-report" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6M8 13h8M8 17h5"/></symbol>
+    <symbol id="icon-products" viewBox="0 0 24 24"><path d="m12 3 9 5v9l-9 5-9-5V8zM3 8l9 5 9-5M12 13v9M7.5 5.5l9 5"/></symbol>
     <symbol id="icon-panel" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M9 3v18"/></symbol>
     <symbol id="icon-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></symbol>
     <symbol id="icon-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="m10 2-.5 2.3-2.1.9-2-1.2-2.4 2.4 1.2 2-1 2.1L1 11v2l2.2.5 1 2.1-1.2 2L5.4 20l2-1.2 2.1.9L10 22h4l.5-2.3 2.1-.9 2 1.2 2.4-2.4-1.2-2 1-2.1L23 13v-2l-2.2-.5-1-2.1 1.2-2L18.6 4l-2 1.2-2.1-.9L14 2z"/></symbol>
@@ -40,6 +43,12 @@
         <span class="nav-caption">РАБОЧЕЕ ПРОСТРАНСТВО</span>
         <a class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}" href="{% url 'home' %}" {% if request.resolver_match.url_name == 'home' %}aria-current="page"{% endif %} title="Главная">
           <svg class="icon"><use href="#icon-grid"></use></svg><span class="nav-label">Главная</span>
+        </a>
+        <a class="nav-link {% if request.resolver_match.url_name == 'financial_reports' %}active{% endif %}" href="{% url 'financial_reports' %}" {% if request.resolver_match.url_name == 'financial_reports' %}aria-current="page"{% endif %} title="Финансовые отчёты">
+          <svg class="icon"><use href="#icon-report"></use></svg><span class="nav-label">Финансовые отчёты</span>
+        </a>
+        <a class="nav-link {% if request.resolver_match.url_name == 'assortment' %}active{% endif %}" href="{% url 'assortment' %}" {% if request.resolver_match.url_name == 'assortment' %}aria-current="page"{% endif %} title="Ассортимент">
+          <svg class="icon"><use href="#icon-products"></use></svg><span class="nav-label">Ассортимент</span>
         </a>
       </nav>
       <div class="sidebar-bottom">

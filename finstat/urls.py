@@ -17,10 +17,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from dashboard.views import home, profile, report_status, settings
+from dashboard.views import assortment, financial_reports, home, profile, report_status, settings
 
 urlpatterns = [
     path('', home, name='home'),
+    path('reports/', financial_reports, name='financial_reports'),
+    path('assortment/', assortment, name='assortment'),
     path('profile/', profile, name='profile'),
     path('settings/', settings, name='settings'),
     path('reports/status/<int:snapshot_id>/', report_status, name='report_status'),

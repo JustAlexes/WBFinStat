@@ -1,0 +1,16 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}Ассортимент · FinStat{% endblock %}
+{% block breadcrumb %}Ассортимент{% endblock %}
+{% block content %}
+  <div class="page-heading"><div class="eyebrow"><span class="eyebrow-dot"></span> FINSTAT / ТОВАРЫ</div><h1>Ассортимент</h1><p>Детальная картина по каждому артикулу.</p></div>
+  <section class="surface-card assortment-panel" aria-labelledby="assortment-title">
+    <div class="assortment-intro"><div><span class="feature-number">ОТ ОБЩЕГО К ЧАСТНОМУ</span><h2 id="assortment-title">Товары и их показатели</h2></div><span class="count-pill">Нет товарных данных</span></div>
+    <div class="assortment-columns" aria-hidden="true"><span>Товар / артикул</span><span>Продажи</span><span>Логистика</span><span>К перечислению</span></div>
+    <div class="assortment-empty">
+      <div class="assortment-symbol" aria-hidden="true"><svg class="icon"><use href="#icon-products"></use></svg><span></span></div>
+      <h3>Здесь начнётся история каждого товара</h3>
+      <p>В базе пока сохранены итоги отчётов и расшифровки удержаний. Для показателей по артикулам нужна полная товарная детализация — подключим её следующим шагом.</p>
+      <a class="assortment-report-link" href="{% url 'financial_reports' %}">Открыть финансовые отчёты <span aria-hidden="true">↗</span></a>
+    </div>
+  </section>
+{% endblock %}

@@ -134,7 +134,7 @@ def report_context(snapshot):
 
 @never_cache
 @require_http_methods(['GET', 'POST'])
-def home(request):
+def financial_reports(request):
     snapshot = None
     if request.method == 'GET':
         snapshot_id = request.session.pop('report_result_id', None)
@@ -174,7 +174,7 @@ def home(request):
                 message += ' Детализация подгружается автоматически.'
             messages.success(request, message)
             request.session['report_result_id'] = snapshot.pk
-            return redirect(reverse('home'))
+            return redirect(reverse('financial_reports'))
         except WildberriesError as exc:
             error = str(exc)
 
@@ -191,7 +191,7 @@ def home(request):
         'calendar_today': today.isoformat(),
         **report_context(snapshot),
     }
-    return render(request, 'dashboard/home.html', context)
+    return render(request, 'dashboard/financial_reports.html', context)
 
 
 @never_cache
@@ -227,3 +227,13 @@ def profile(request):
 
 def settings(request):
     return render(request, 'dashboard/settings.html')
+
+
+@require_GET
+def home(request):
+    return render(request, 'dashboard/home.html')
+
+
+@require_GET
+def assortment(request):
+    return render(request, 'dashboard/assortment.html')
